@@ -4,23 +4,13 @@ const { verifyAccessToken } = require('../middleware/auth');
 const desig = require('../controllers/designationController');
 const dept  = require('../controllers/departmentController');
 const division = require('../controllers/divisionController');
+const zone = require('../controllers/zoneController');
+const region = require('../controllers/regionController');
+const area = require('../controllers/areaController');
+
 
 // All master routes require a valid admin token
 router.use(verifyAccessToken);
-
-// ── Universal next-code endpoint ────────────────────────────
-// GET /api/masters/next-code/:type (type: designation, department, division)
-router.get('/next-code/:type', (req, res, next) => {
-    const type = (req.params.type || '').toLowerCase();
-    if (type === 'designation') return desig.getNextCode(req, res, next);
-    if (type === 'department')  return dept.getNextCode(req, res, next);
-    if (type === 'division')    return division.getNextCode(req, res, next);
-
-    return res.status(400).json({
-        success: false,
-        message: `Invalid master type: "${req.params.type}". Supported types: designation, department, division.`
-    });
-});
 
 // ── Designation Master ──────────────────────────────────────
 router.get('/designation/next-code', desig.getNextCode);
@@ -43,5 +33,27 @@ router.post('/division',         division.create);
 router.get('/division',          division.getAll);
 router.put('/division/:code',    division.update);
 router.delete('/division/:code', division.remove);
+
+// ── Zone Master ─────────────────────────────────────────────
+router.get('/zone/next-code',    zone.getNextCode);
+router.post('/zone',             zone.create);
+router.get('/zone',              zone.getAll);
+router.put('/zone/:code',        zone.update);
+router.delete('/zone/:code',     zone.remove);
+
+// ── Region Master ───────────────────────────────────────────
+router.get('/region/next-code',  region.getNextCode);
+router.post('/region',           region.create);
+router.get('/region',            region.getAll);
+router.put('/region/:code',      region.update);
+router.delete('/region/:code',   region.remove);
+
+// ── Area Master ─────────────────────────────────────────────
+router.get('/area/classifications', area.getClassifications);
+router.get('/area/next-code',       area.getNextCode);
+router.post('/area',                area.create);
+router.get('/area',                 area.getAll);
+router.put('/area/:code',           area.update);
+router.delete('/area/:code',        area.remove);
 
 module.exports = router;

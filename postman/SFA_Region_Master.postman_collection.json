@@ -1,0 +1,277 @@
+{
+  "info": {
+    "name": "SFA Region Master API",
+    "_postman_id": "sfa-region-master-collection",
+    "description": "CRUD API for Region Master.\n\nTable: Tbl_Region_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix R and 4-digit padding (R0001, R0002...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name and code (e.g. searching '0001' matches 'R0001').",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "regionCode",
+      "value": "R0001",
+      "type": "string",
+      "description": "Code of the region to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Region",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('regionCode', res.data.c_code);",
+              "  console.log('✅ Created:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"South Region\",\n  \"c_sh_name\": \"SR\",\n  \"c_zone_code\": \"Z00001\",\n  \"n_lami\": 12.9716,\n  \"n_lgmi\": 77.5946\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"]
+        },
+        "description": "Creates a new region.\n\nCode is auto-generated incrementally with prefix R and 4-digit padding (R0001, R0002...).\nThe created code is auto-saved to {{regionCode}} variable.\n\nFields:\n- c_name (required): Region name\n- c_sh_name (optional): Short name\n- c_zone_code (required): Valid Zone Code from Zone Master\n- n_lami (optional): Latitude (must be a valid numeric value)\n- n_lgmi (optional): Longitude (must be a valid numeric value)"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Region created successfully.\",\n  \"data\": {\n    \"c_code\": \"R0001\",\n    \"c_name\": \"South Region\",\n    \"c_sh_name\": \"SR\",\n    \"c_zone_code\": \"Z00001\",\n    \"n_lami\": 12.9716,\n    \"n_lgmi\": 77.5946\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Zone",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Zone Code \\\"Z99999\\\" not found or is deleted.\"\n}"
+        },
+        {
+          "name": "Error - Non-numeric Coordinate",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"LAT must be a numerical value.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"]
+        },
+        "description": "By default (empty search term), returns empty data block without querying database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (search=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region?search=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"],
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Returns all active regions paginated, including Zone Name joins."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"R0001\",\n      \"c_name\": \"South Region\",\n      \"c_sh_name\": \"SR\",\n      \"c_zone_code\": \"Z00001\",\n      \"c_zone_name\": \"South Zone\",\n      \"n_lami\": 12.9716,\n      \"n_lgmi\": 77.5946,\n      \"d_created\": \"2026-05-25T05:00:00.000Z\",\n      \"d_modified\": null\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Keyword (South)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region?search=South&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"],
+          "query": [
+            { "key": "search", "value": "South" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search regions whose name contains 'South'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"R0001\",\n      \"c_name\": \"South Region\",\n      \"c_sh_name\": \"SR\",\n      \"c_zone_code\": \"Z00001\",\n      \"c_zone_name\": \"South Zone\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Code digits (0001)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region?code=0001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"],
+          "query": [
+            { "key": "code", "value": "0001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search regions whose code contains '0001' (matches R0001)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"R0001\",\n      \"c_name\": \"South Region\",\n      \"c_sh_name\": \"SR\",\n      \"c_zone_code\": \"Z00001\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Update Region",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Updated South Region\",\n  \"c_sh_name\": \"USR\",\n  \"c_zone_code\": \"Z00001\",\n  \"n_lami\": 13.0000,\n  \"n_lgmi\": 77.6000\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region/{{regionCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region", "{{regionCode}}"]
+        },
+        "description": "Update name, short name, zone, and coordinates of a region.\n\nCode cannot be changed."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Region updated successfully.\",\n  \"data\": {\n    \"c_code\": \"R0001\",\n    \"c_name\": \"Updated South Region\",\n    \"c_sh_name\": \"USR\",\n    \"c_zone_code\": \"Z00001\",\n    \"n_lami\": 13.0000,\n    \"n_lgmi\": 77.6000\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Delete Region",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region/{{regionCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region", "{{regionCode}}"]
+        },
+        "description": "Soft deletes a region (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Region \\\"R0001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Get Next Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region", "next-code"]
+        },
+        "description": "Returns the next auto-generated region code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"R0002\"\n}"
+        }
+      ]
+    }
+  ]
+}

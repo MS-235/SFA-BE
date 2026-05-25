@@ -1,0 +1,301 @@
+{
+  "info": {
+    "name": "SFA Area Master API",
+    "_postman_id": "sfa-area-master-collection",
+    "description": "CRUD API for Area Master.\n\nTable: Tbl_Area_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix A and 5-digit padding (A00001, A00002...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name (e.g. searching 'West' matches 'West Area').",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "areaCode",
+      "value": "A00001",
+      "type": "string",
+      "description": "Code of the area to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Area",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('areaCode', res.data.c_code);",
+              "  console.log('✅ Created Area:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Gachibowli Area\",\n  \"c_sh_name\": \"GBL\",\n  \"c_region_code\": \"R0001\",\n  \"c_sales_hq\": \"Hyderabad HQ\",\n  \"c_district_code\": \"Ranga Reddy\",\n  \"c_classification_code\": \"METRO\",\n  \"n_lami\": 17.4483,\n  \"n_lgmi\": 78.3741\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"]
+        },
+        "description": "Creates a new area.\n\nCode is auto-generated incrementally with prefix A and 5-digit padding (A00001, A00002...).\nThe created code is auto-saved to {{areaCode}} variable.\n\nFields:\n- c_name (required): Area name\n- c_region_code (required): Valid Region Code from Region Master\n- c_sh_name (optional): Short name\n- c_sales_hq (optional): Sales HQ name\n- c_district_code (optional): District code/name\n- c_classification_code (optional): Must match NON METRO, METRO, MINI METRO, or OTHERS\n- n_lami (optional): Latitude (must be numerical)\n- n_lgmi (optional): Longitude (must be numerical)"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Area created successfully.\",\n  \"data\": {\n    \"c_code\": \"A00001\",\n    \"c_name\": \"Gachibowli Area\",\n    \"c_sh_name\": \"GBL\",\n    \"c_region_code\": \"R0001\",\n    \"c_sales_hq\": \"Hyderabad HQ\",\n    \"c_district_code\": \"Ranga Reddy\",\n    \"c_classification_code\": \"METRO\",\n    \"n_lami\": 17.4483,\n    \"n_lgmi\": 78.3741\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Region",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Region Code \\\"R9999\\\" not found or is deleted.\"\n}"
+        },
+        {
+          "name": "Error - Non-numeric Coordinate",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"LAT must be a numerical value.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"]
+        },
+        "description": "By default (empty search term), returns empty data block without querying database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (search=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area?search=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"],
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Returns all active areas paginated, including Region Name joins."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"A00001\",\n      \"c_name\": \"Gachibowli Area\",\n      \"c_sh_name\": \"GBL\",\n      \"c_region_code\": \"R0001\",\n      \"c_region_name\": \"South Region\",\n      \"c_sales_hq\": \"Hyderabad HQ\",\n      \"c_district_code\": \"Ranga Reddy\",\n      \"c_classification_code\": \"METRO\",\n      \"n_lami\": 17.4483,\n      \"n_lgmi\": 78.3741,\n      \"d_created\": \"2026-05-25T05:00:00.000Z\",\n      \"d_modified\": null\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Keyword (Gachibowli)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area?search=Gachibowli&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"],
+          "query": [
+            { "key": "search", "value": "Gachibowli" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search areas whose name contains 'Gachibowli'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"A00001\",\n      \"c_name\": \"Gachibowli Area\",\n      \"c_sh_name\": \"GBL\",\n      \"c_region_code\": \"R0001\",\n      \"c_region_name\": \"South Region\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Code digits (00001)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area?code=00001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"],
+          "query": [
+            { "key": "code", "value": "00001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search areas whose code contains '00001' (matches A00001)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"A00001\",\n      \"c_name\": \"Gachibowli Area\",\n      \"c_sh_name\": \"GBL\",\n      \"c_region_code\": \"R0001\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Update Area",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Updated Gachibowli Area\",\n  \"c_sh_name\": \"UGBL\",\n  \"c_region_code\": \"R0001\",\n  \"c_sales_hq\": \"Secunderabad HQ\",\n  \"c_district_code\": \"Hyderabad\",\n  \"c_classification_code\": \"NON METRO\",\n  \"n_lami\": 17.5000,\n  \"n_lgmi\": 78.4000\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area/{{areaCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area", "{{areaCode}}"]
+        },
+        "description": "Update all mutable fields of an area."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Area updated successfully.\",\n  \"data\": {\n    \"c_code\": \"A00001\",\n    \"c_name\": \"Updated Gachibowli Area\",\n    \"c_sh_name\": \"UGBL\",\n    \"c_region_code\": \"R0001\",\n    \"c_sales_hq\": \"Secunderabad HQ\",\n    \"c_district_code\": \"Hyderabad\",\n    \"c_classification_code\": \"NON METRO\",\n    \"n_lami\": 17.5000,\n    \"n_lgmi\": 78.4000\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Delete Area",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area/{{areaCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area", "{{areaCode}}"]
+        },
+        "description": "Soft deletes an area (sets n_deleted = 1)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Area \\\"A00001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Get Next Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area", "next-code"]
+        },
+        "description": "Returns the next auto-generated area code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"A00002\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "9. Get Classifications",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area/classifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area", "classifications"]
+        },
+        "description": "Returns list of constant classifications from backend."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": [\n    { \"value\": \"NON METRO\", \"label\": \"Non Metro\" },\n    { \"value\": \"METRO\", \"label\": \"Metro\" },\n    { \"value\": \"MINI METRO\", \"label\": \"Mini Metro\" },\n    { \"value\": \"OTHERS\", \"label\": \"Others\" }\n  ]\n}"
+        }
+      ]
+    }
+  ]
+}

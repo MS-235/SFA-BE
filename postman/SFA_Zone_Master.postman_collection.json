@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "SFA Zone Master API",
+    "_postman_id": "sfa-zone-master-collection",
+    "description": "CRUD API for Zone Master.\n\nTable: Tbl_Zone_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix Z and 5-digit padding (Z00001, Z00002...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name and code (e.g. searching '00001' matches 'Z00001').",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "zoneCode",
+      "value": "Z00001",
+      "type": "string",
+      "description": "Code of the zone to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Zone",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('zoneCode', res.data.c_code);",
+              "  console.log('✅ Created:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"East Zone\",\n  \"c_sh_name\": \"EAST\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone"]
+        },
+        "description": "Creates a new zone.\n\nCode is auto-generated incrementally with prefix Z and 5-digit padding (Z00001, Z00002...).\nThe created code is auto-saved to {{zoneCode}} variable.\n\nFields:\n- c_name (required): Zone name\n- c_sh_name (optional): Short name"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Zone created successfully.\",\n  \"data\": {\n    \"c_code\": \"Z00001\",\n    \"c_name\": \"East Zone\",\n    \"c_sh_name\": \"EAST\"\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate Name",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Zone \\\"East Zone\\\" already exists.\"\n}"
+        },
+        {
+          "name": "Error - Missing Name",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Name (c_name) is required.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone"]
+        },
+        "description": "By default (empty search term), returns empty data block without querying database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (search=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone?search=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone"],
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Returns all active zones paginated."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"Z00001\", \"c_name\": \"East Zone\", \"c_sh_name\": \"EAST\", \"d_created\": \"2026-05-25T05:00:00.000Z\", \"d_modified\": null },\n    { \"c_code\": \"Z00002\", \"c_name\": \"North Zone\", \"c_sh_name\": \"NORTH\", \"d_created\": \"2026-05-25T05:01:00.000Z\", \"d_modified\": null }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Keyword (East)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone?search=East&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone"],
+          "query": [
+            { "key": "search", "value": "East" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search zones whose name contains 'East'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"Z00001\", \"c_name\": \"East Zone\", \"c_sh_name\": \"EAST\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Code digits (00001)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone?code=00001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone"],
+          "query": [
+            { "key": "code", "value": "00001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search zones whose code contains '00001' (matches Z00001)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"Z00001\", \"c_name\": \"East Zone\", \"c_sh_name\": \"EAST\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Update Zone",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Updated East Zone\",\n  \"c_sh_name\": \"UEAST\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone/{{zoneCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone", "{{zoneCode}}"]
+        },
+        "description": "Update name and/or short name of a zone.\n\nCode cannot be changed."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Zone updated successfully.\",\n  \"data\": {\n    \"c_code\": \"Z00001\",\n    \"c_name\": \"Updated East Zone\",\n    \"c_sh_name\": \"UEAST\"\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate Name",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Another zone with name \\\"Updated East Zone\\\" already exists.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Delete Zone",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone/{{zoneCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone", "{{zoneCode}}"]
+        },
+        "description": "Soft deletes a zone (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Zone \\\"Z00001\\\" deleted successfully.\"\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Zone \\\"Z00001\\\" not found.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Get Next Code (Specific)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/zone/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "zone", "next-code"]
+        },
+        "description": "Returns the next auto-generated zone code using the specific zone endpoint."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"Z00002\"\n}"
+        }
+      ]
+    }
+  ]
+}
