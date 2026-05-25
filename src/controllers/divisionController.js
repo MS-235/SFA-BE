@@ -248,4 +248,19 @@ async function remove(req, res) {
     }
 }
 
-module.exports = { create, getAll, update, remove };
+// ─── GET NEXT CODE ────────────────────────────────────────────
+// GET /api/masters/division/next-code
+async function getNextCode(req, res) {
+    try {
+        const nextCode = await generateNextCode();
+        return res.status(200).json({
+            success: true,
+            nextCode
+        });
+    } catch (err) {
+        console.error('Division getNextCode error:', err.message);
+        return res.status(500).json({ success: false, message: 'Server error.' });
+    }
+}
+
+module.exports = { create, getAll, update, remove, getNextCode };
