@@ -1,0 +1,328 @@
+{
+  "info": {
+    "name": "SFA Admin Auth API",
+    "_postman_id": "sfa-admin-auth-collection",
+    "description": "Admin authentication API for SFA system.\n\nFlow:\n1. Register → creates admin\n2. Login → get accessToken + refreshToken\n3. Use accessToken in Bearer header for protected routes\n4. When accessToken expires (15m), call Refresh Token to get new pair\n5. Logout to revoke refreshToken",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Register Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_code\": \"ADM001\",\n  \"c_user_id\": \"admin1\",\n  \"c_name\": \"Admin User\",\n  \"c_password\": \"Admin@123\",\n  \"n_type\": 1,\n  \"mobile_number\": \"9876543210\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        },
+        "description": "Creates a new admin user in Tbl_User_Info.\n\nFields:\n- c_code (required): Unique admin code, max 10 chars\n- c_user_id (required): Unique login username, max 20 chars\n- c_password (required): Min 6 characters\n- c_name: Full name\n- n_type: 1 = admin (default), 2 = superadmin\n- mobile_number: Optional"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Admin registered successfully.\",\n  \"data\": {\n    \"c_code\": \"ADM001\",\n    \"c_user_id\": \"admin1\",\n    \"c_name\": \"Admin User\",\n    \"n_type\": 1\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"An admin with this c_code or c_user_id already exists.\"\n}"
+        },
+        {
+          "name": "Error - Validation",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"c_code, c_user_id and c_password are required.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success) {",
+              "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+              "  console.log('✅ Tokens saved to collection variables');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_user_id\": \"admin1\",\n  \"c_password\": \"Admin@123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "description": "Login with c_user_id and c_password.\n\nOn success:\n- Returns accessToken (expires in 15m)\n- Returns refreshToken (expires in 7d)\n- The test script auto-saves both tokens to collection variables\n\nAccount locks after 5 failed attempts."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Login successful.\",\n  \"data\": {\n    \"admin\": {\n      \"c_code\": \"ADM001\",\n      \"c_user_id\": \"admin1\",\n      \"c_name\": \"Admin User\",\n      \"n_type\": 1\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"accessTokenExpiresIn\": \"15m\",\n    \"refreshTokenExpiresIn\": \"7d\"\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Credentials",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Invalid credentials. 4 attempt(s) remaining.\"\n}"
+        },
+        {
+          "name": "Error - Account Locked",
+          "status": "Forbidden",
+          "code": 403,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Account is locked. Contact your administrator.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get My Profile (Protected)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "me"]
+        },
+        "description": "Returns the current admin's profile.\n\nRequires a valid accessToken in the Authorization header.\nIf token is expired, you'll get TOKEN_EXPIRED — use the Refresh Token request."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"c_code\": \"ADM001\",\n    \"c_user_id\": \"admin1\",\n    \"c_name\": \"Admin User\",\n    \"n_type\": 1,\n    \"mobile_number\": \"9876543210\",\n    \"created_at\": \"2026-05-25T04:52:02.127Z\"\n  }\n}"
+        },
+        {
+          "name": "Error - Token Expired",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"code\": \"TOKEN_EXPIRED\",\n  \"message\": \"Access token expired. Use your refresh token to get a new one.\",\n  \"hint\": \"POST /api/auth/refresh  body: { \\\"refreshToken\\\": \\\"...\\\" }\"\n}"
+        },
+        {
+          "name": "Error - No Token",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Authorization header missing. Use: Bearer <token>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success) {",
+              "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+              "  console.log('✅ New tokens saved to collection variables');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh"]
+        },
+        "description": "Exchange a valid refreshToken for a new accessToken + refreshToken pair.\n\n- Old refresh token is revoked immediately (rotation)\n- New tokens are saved automatically via the test script\n- Call this when you get TOKEN_EXPIRED on any protected route\n- If refresh token is also expired, user must login again"
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Tokens refreshed successfully.\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"accessTokenExpiresIn\": \"15m\",\n    \"refreshTokenExpiresIn\": \"7d\"\n  }\n}"
+        },
+        {
+          "name": "Error - Refresh Token Expired",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Refresh token has expired. Please log in again.\"\n}"
+        },
+        {
+          "name": "Error - Token Revoked",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Refresh token has been revoked. Please log in again.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success) {",
+              "  pm.collectionVariables.set('accessToken', '');",
+              "  pm.collectionVariables.set('refreshToken', '');",
+              "  console.log('✅ Tokens cleared from collection variables');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        },
+        "description": "Revokes the refresh token in Tbl_Device_Login_Token_Details (sets n_enable = 0).\n\nAfter logout:\n- The refreshToken can no longer be used to get new tokens\n- The accessToken will still work until it naturally expires (15m)\n- Both tokens are cleared from collection variables by the test script"
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Check if the server is running."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"status\": \"ok\",\n  \"timestamp\": \"2026-05-25T04:52:02.127Z\"\n}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,260 @@
+{
+  "info": {
+    "name": "SFA Department Master API",
+    "_postman_id": "sfa-department-master-collection",
+    "description": "CRUD API for Department Master.\n\nTable: tbl_department_mst\n\nCode auto-generated with prefix DP (DP0001, DP0002...)\n\nTravel desk location & Material desk location are fixed values from backend:\n  - HYDERABAD\n  - MUMBAI\n(Call GET /locations to get the current list)\n\nTravel desk Incharge & Material desk Incharge are optional (future use).\nSFA Role is a checkbox: 0 = No, 1 = Yes.\n\nSearch supports * wildcard on name.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",     "value": "http://localhost:3000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "deptCode",    "value": "DP0001", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Get Valid Locations (config)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department/locations",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department","locations"]
+        },
+        "description": "Returns the fixed list of valid travel/material desk locations.\nUse these values in the location fields when creating/updating a department.\nThis list is managed from the backend — scalable without DB changes."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": [\n    { \"value\": \"HYDERABAD\", \"label\": \"Hyderabad\" },\n    { \"value\": \"MUMBAI\",    \"label\": \"Mumbai\"    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "1. Create Department (minimal)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('deptCode', res.data.c_code);",
+              "  console.log('✅ Created:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Sales\",\n  \"c_short_name\": \"SLS\",\n  \"n_sfa_role\": 1\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"]
+        },
+        "description": "Minimal create — only required fields.\nCode auto-generates as DP0001, DP0002...\n\nRequired:\n  c_name\n\nOptional:\n  c_short_name\n  c_travel_desk_location  — must be HYDERABAD or MUMBAI\n  c_travel_desk_incharge  — employee code from FS master\n  c_material_desk_location\n  c_material_desk_incharge\n  n_sfa_role              — 0 (No) or 1 (Yes), default 0"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Department created successfully.\",\n  \"data\": {\n    \"c_code\": \"DP0001\",\n    \"c_name\": \"Sales\",\n    \"c_short_name\": \"SLS\",\n    \"c_travel_desk_location\": null,\n    \"c_travel_desk_incharge\": null,\n    \"c_material_desk_location\": null,\n    \"c_material_desk_incharge\": null,\n    \"n_sfa_role\": 1,\n    \"sfa_role_label\": \"Yes\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Create Department (full)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('deptCode', res.data.c_code);",
+              "  console.log('✅ Created:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Marketing\",\n  \"c_short_name\": \"MKT\",\n  \"c_travel_desk_location\": \"HYDERABAD\",\n  \"c_travel_desk_incharge\": null,\n  \"c_material_desk_location\": \"MUMBAI\",\n  \"c_material_desk_incharge\": null,\n  \"n_sfa_role\": 0\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"]
+        },
+        "description": "Full create with all fields.\nLocation values must be exactly: HYDERABAD or MUMBAI (case-insensitive).\nIncharge fields accept employee codes from Tbl_FS_Mst."
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Department created successfully.\",\n  \"data\": {\n    \"c_code\": \"DP0002\",\n    \"c_name\": \"Marketing\",\n    \"c_short_name\": \"MKT\",\n    \"c_travel_desk_location\": \"HYDERABAD\",\n    \"c_travel_desk_incharge\": null,\n    \"c_material_desk_location\": \"MUMBAI\",\n    \"c_material_desk_incharge\": null,\n    \"n_sfa_role\": 0,\n    \"sfa_role_label\": \"No\"\n  }\n}"
+        },
+        {
+          "name": "Error - Invalid Location",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"errors\": [\n    \"Travel desk location must be one of: HYDERABAD, MUMBAI.\"\n  ]\n}"
+        },
+        {
+          "name": "Error - Duplicate Name",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Department \\\"Marketing\\\" already exists.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (name=*)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department?name=*",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"],
+          "query": [{ "key": "name", "value": "*" }]
+        },
+        "description": "Returns all active departments.\nname=* returns everything."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"C_Code\": \"DP0001\",\n      \"c_name\": \"Sales\",\n      \"c_short_name\": \"SLS\",\n      \"C_travel_desk_location\": null,\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": null,\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 1,\n      \"sfa_role_label\": \"Yes\"\n    },\n    {\n      \"C_Code\": \"DP0002\",\n      \"c_name\": \"Marketing\",\n      \"c_short_name\": \"MKT\",\n      \"C_travel_desk_location\": \"HYDERABAD\",\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": \"MUMBAI\",\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 0,\n      \"sfa_role_label\": \"No\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Starts With (S*)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department?name=S*",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"],
+          "query": [{ "key": "name", "value": "S*" }]
+        },
+        "description": "Wildcard search:\n  S*       → starts with S\n  *Sales*  → contains Sales\n  *Sales   → ends with Sales\n  Sales    → exact match"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Get by Code",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department/{{deptCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department","{{deptCode}}"]
+        },
+        "description": "Fetch a single department by its code.\n{{deptCode}} is auto-set when you run Create Department."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"C_Code\": \"DP0001\",\n    \"c_name\": \"Sales\",\n    \"c_short_name\": \"SLS\",\n    \"C_travel_desk_location\": null,\n    \"C_travel_desk_incharge\": null,\n    \"C_material_desk_location\": null,\n    \"C_material_desk_incharge\": null,\n    \"N_SFA_ROLE\": 1,\n    \"sfa_role_label\": \"Yes\",\n    \"D_created\": \"2026-05-25T05:00:00.000Z\",\n    \"D_modified\": null,\n    \"C_modifier\": \"admin1\"\n  }\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Department \\\"DP9999\\\" not found.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Update Department",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Sales & Marketing\",\n  \"c_short_name\": \"S&M\",\n  \"c_travel_desk_location\": \"MUMBAI\",\n  \"c_travel_desk_incharge\": null,\n  \"c_material_desk_location\": \"HYDERABAD\",\n  \"c_material_desk_incharge\": null,\n  \"n_sfa_role\": 1\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department/{{deptCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department","{{deptCode}}"]
+        },
+        "description": "Update all fields of a department.\nCode cannot be changed.\nSame validations as Create apply."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Department updated successfully.\",\n  \"data\": {\n    \"c_code\": \"DP0001\",\n    \"c_name\": \"Sales & Marketing\",\n    \"c_short_name\": \"S&M\",\n    \"c_travel_desk_location\": \"MUMBAI\",\n    \"c_travel_desk_incharge\": null,\n    \"c_material_desk_location\": \"HYDERABAD\",\n    \"c_material_desk_incharge\": null,\n    \"n_sfa_role\": 1,\n    \"sfa_role_label\": \"Yes\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Delete Department",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department/{{deptCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department","{{deptCode}}"]
+        },
+        "description": "Soft deletes a department (sets N_deleted = 1).\nRecord is NOT physically removed."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Department \\\"DP0001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    }
+  ]
+}

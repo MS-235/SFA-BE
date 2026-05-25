@@ -1,0 +1,287 @@
+{
+  "info": {
+    "name": "SFA Designation Master API",
+    "_postman_id": "sfa-designation-master-collection",
+    "description": "CRUD API for Designation Master.\n\nTable: tbl_desig_mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix DES (DES001, DES002...)\nSearch supports * wildcard: name=* returns all, name=Sales* returns starts with Sales",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "desigCode",
+      "value": "DES001",
+      "type": "string",
+      "description": "Code of the designation to fetch/update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Designation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('desigCode', res.data.c_code);",
+              "  console.log('✅ Created:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Sales Manager\",\n  \"c_sh_name\": \"SM\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation"]
+        },
+        "description": "Creates a new designation.\n\nCode is auto-generated incrementally with prefix DES (DES001, DES002...).\nThe created code is auto-saved to {{desigCode}} variable.\n\nFields:\n- c_name (required): Designation name\n- c_sh_name (optional): Short name"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Designation created successfully.\",\n  \"data\": {\n    \"c_code\": \"DES001\",\n    \"c_name\": \"Sales Manager\",\n    \"c_sh_name\": \"SM\"\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate Name",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Designation \\\"Sales Manager\\\" already exists.\"\n}"
+        },
+        {
+          "name": "Error - Missing Name",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Name (c_name) is required.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (name=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation?name=*",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation"],
+          "query": [{ "key": "name", "value": "*" }]
+        },
+        "description": "Returns all active designations.\n\nPassing name=* (or no name param) returns the full list."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"count\": 3,\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\",        \"c_sh_name\": \"SM\",   \"d_created\": \"2026-05-25T05:00:00.000Z\", \"d_modified\": null },\n    { \"c_code\": \"DES002\", \"c_name\": \"Regional Manager\",      \"c_sh_name\": \"RM\",   \"d_created\": \"2026-05-25T05:01:00.000Z\", \"d_modified\": null },\n    { \"c_code\": \"DES003\", \"c_name\": \"Area Business Manager\", \"c_sh_name\": \"ABM\",  \"d_created\": \"2026-05-25T05:02:00.000Z\", \"d_modified\": null }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Search — Starts With (Sales*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation?name=Sales*",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation"],
+          "query": [{ "key": "name", "value": "Sales*" }]
+        },
+        "description": "Search designations whose name STARTS WITH 'Sales'.\n\nWildcard rules:\n  Sales*   → starts with Sales\n  *Manager → ends with Manager\n  *Sales*  → contains Sales\n  Sales    → exact match (no wildcard)"
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\", \"c_sh_name\": \"SM\" },\n    { \"c_code\": \"DES004\", \"c_name\": \"Sales Head\",    \"c_sh_name\": \"SH\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Contains (*Manager*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation?name=*Manager*",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation"],
+          "query": [{ "key": "name", "value": "*Manager*" }]
+        },
+        "description": "Search designations whose name CONTAINS 'Manager'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\",   \"c_sh_name\": \"SM\" },\n    { \"c_code\": \"DES002\", \"c_name\": \"Regional Manager\", \"c_sh_name\": \"RM\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Exact Match",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation?name=Sales Manager",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation"],
+          "query": [{ "key": "name", "value": "Sales Manager" }]
+        },
+        "description": "Exact name match (case-insensitive). No wildcard."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"count\": 1,\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\", \"c_sh_name\": \"SM\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Get by Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation/{{desigCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation", "{{desigCode}}"]
+        },
+        "description": "Fetch a single designation by its code.\n\n{{desigCode}} is auto-set when you run Create Designation."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"c_code\": \"DES001\",\n    \"c_name\": \"Sales Manager\",\n    \"c_sh_name\": \"SM\",\n    \"d_created\": \"2026-05-25T05:00:00.000Z\",\n    \"d_modified\": null,\n    \"c_modifier\": \"admin1\"\n  }\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Designation \\\"DES999\\\" not found.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Update Designation",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Senior Sales Manager\",\n  \"c_sh_name\": \"SSM\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation/{{desigCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation", "{{desigCode}}"]
+        },
+        "description": "Update name and/or short name of a designation.\n\nCode cannot be changed — only c_name and c_sh_name."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Designation updated successfully.\",\n  \"data\": {\n    \"c_code\": \"DES001\",\n    \"c_name\": \"Senior Sales Manager\",\n    \"c_sh_name\": \"SSM\"\n  }\n}"
+        },
+        {
+          "name": "Error - Duplicate Name",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Another designation with name \\\"Senior Sales Manager\\\" already exists.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Delete Designation",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/designation/{{desigCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "designation", "{{desigCode}}"]
+        },
+        "description": "Soft deletes a designation (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database.\nIt will no longer appear in any list or search results."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Designation \\\"DES001\\\" deleted successfully.\"\n}"
+        },
+        {
+          "name": "Error - Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Designation \\\"DES001\\\" not found.\"\n}"
+        }
+      ]
+    }
+  ]
+}
