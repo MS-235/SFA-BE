@@ -2,7 +2,7 @@
   "info": {
     "name": "SFA Department Master API",
     "_postman_id": "sfa-department-master-collection",
-    "description": "CRUD API for Department Master.\n\nTable: tbl_department_mst\n\nCode auto-generated with prefix DP (DP0001, DP0002...)\n\nTravel desk location & Material desk location are fixed values from backend:\n  - HYDERABAD\n  - MUMBAI\n(Call GET /locations to get the current list)\n\nTravel desk Incharge & Material desk Incharge are optional (future use).\nSFA Role is a checkbox: 0 = No, 1 = Yes.\n\nSearch supports * wildcard on name.",
+    "description": "CRUD API for Department Master.\n\nTable: tbl_department_mst\n\nCode auto-generated with prefix DP (DP0001, DP0002...)\n\nTravel desk location & Material desk location are fixed values from backend:\n  - HYDERABAD\n  - MUMBAI\n(Call GET /locations to get the current list)\n\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name and code (e.g. searching '0001' matches 'DP0001').",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -138,17 +138,16 @@
       ]
     },
     {
-      "name": "3. Get All (name=*)",
+      "name": "3. Get All (Default - Empty Search)",
       "request": {
         "method": "GET",
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/department?name=*",
+          "raw": "{{baseUrl}}/api/masters/department",
           "host": ["{{baseUrl}}"],
-          "path": ["api","masters","department"],
-          "query": [{ "key": "name", "value": "*" }]
+          "path": ["api","masters","department"]
         },
-        "description": "Returns all active departments.\nname=* returns everything."
+        "description": "By default (empty search term), returns empty data block without querying database."
       },
       "response": [
         {
@@ -156,36 +155,26 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"C_Code\": \"DP0001\",\n      \"c_name\": \"Sales\",\n      \"c_short_name\": \"SLS\",\n      \"C_travel_desk_location\": null,\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": null,\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 1,\n      \"sfa_role_label\": \"Yes\"\n    },\n    {\n      \"C_Code\": \"DP0002\",\n      \"c_name\": \"Marketing\",\n      \"c_short_name\": \"MKT\",\n      \"C_travel_desk_location\": \"HYDERABAD\",\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": \"MUMBAI\",\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 0,\n      \"sfa_role_label\": \"No\"\n    }\n  ]\n}"
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
         }
       ]
     },
     {
-      "name": "4. Search — Starts With (S*)",
+      "name": "4. Get All (search=*)",
       "request": {
         "method": "GET",
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/department?name=S*",
+          "raw": "{{baseUrl}}/api/masters/department?search=*&page=1&limit=10",
           "host": ["{{baseUrl}}"],
           "path": ["api","masters","department"],
-          "query": [{ "key": "name", "value": "S*" }]
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
         },
-        "description": "Wildcard search:\n  S*       → starts with S\n  *Sales*  → contains Sales\n  *Sales   → ends with Sales\n  Sales    → exact match"
-      },
-      "response": []
-    },
-    {
-      "name": "5. Get by Code",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-        "url": {
-          "raw": "{{baseUrl}}/api/masters/department/{{deptCode}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api","masters","department","{{deptCode}}"]
-        },
-        "description": "Fetch a single department by its code.\n{{deptCode}} is auto-set when you run Create Department."
+        "description": "Returns all active departments paginated."
       },
       "response": [
         {
@@ -193,19 +182,66 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"C_Code\": \"DP0001\",\n    \"c_name\": \"Sales\",\n    \"c_short_name\": \"SLS\",\n    \"C_travel_desk_location\": null,\n    \"C_travel_desk_incharge\": null,\n    \"C_material_desk_location\": null,\n    \"C_material_desk_incharge\": null,\n    \"N_SFA_ROLE\": 1,\n    \"sfa_role_label\": \"Yes\",\n    \"D_created\": \"2026-05-25T05:00:00.000Z\",\n    \"D_modified\": null,\n    \"C_modifier\": \"admin1\"\n  }\n}"
-        },
-        {
-          "name": "Error - Not Found",
-          "status": "Not Found",
-          "code": 404,
-          "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Department \\\"DP9999\\\" not found.\"\n}"
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"C_Code\": \"DP0001\",\n      \"c_name\": \"Sales\",\n      \"c_short_name\": \"SLS\",\n      \"C_travel_desk_location\": null,\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": null,\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 1,\n      \"sfa_role_label\": \"Yes\"\n    },\n    {\n      \"C_Code\": \"DP0002\",\n      \"c_name\": \"Marketing\",\n      \"c_short_name\": \"MKT\",\n      \"C_travel_desk_location\": \"HYDERABAD\",\n      \"C_travel_desk_incharge\": null,\n      \"C_material_desk_location\": \"MUMBAI\",\n      \"C_material_desk_incharge\": null,\n      \"N_SFA_ROLE\": 0,\n      \"sfa_role_label\": \"No\"\n    }\n  ]\n}"
         }
       ]
     },
     {
-      "name": "6. Update Department",
+      "name": "5. Search — Keyword (Sales)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department?search=Sales&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"],
+          "query": [
+            { "key": "search", "value": "Sales" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search departments whose name or code contains 'Sales'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"C_Code\": \"DP0001\", \"c_name\": \"Sales\", \"c_short_name\": \"SLS\", \"N_SFA_ROLE\": 1, \"sfa_role_label\": \"Yes\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Search — Code digits (0001)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/department?search=0001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","masters","department"],
+          "query": [
+            { "key": "search", "value": "0001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search departments whose code contains '0001' (matches DP0001)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"C_Code\": \"DP0001\", \"c_name\": \"Sales\", \"c_short_name\": \"SLS\", \"N_SFA_ROLE\": 1, \"sfa_role_label\": \"Yes\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Update Department",
       "request": {
         "method": "PUT",
         "header": [
@@ -235,7 +271,7 @@
       ]
     },
     {
-      "name": "7. Delete Department",
+      "name": "8. Delete Department",
       "request": {
         "method": "DELETE",
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],

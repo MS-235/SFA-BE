@@ -172,96 +172,77 @@ async function create(req, res) {
 }
 
 // ─── GET ALL / SEARCH ─────────────────────────────────────────
-// GET /api/masters/department?name=*          → all
-// GET /api/masters/department?name=Sales*     → wildcard
-// GET /api/masters/department?name=Sales      → exact
+// GET /api/masters/department?search=Sales&page=1&limit=10
 async function getAll(req, res) {
-    const { name } = req.query;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || req.query.name || '').trim();
+
+    if (!search) {
+        return res.status(200).json({
+            success: true,
+            pagination: {
+                total: 0,
+                page,
+                limit,
+                totalPages: 0
+            },
+            data: []
+        });
+    }
 
     try {
-        let query, params;
+        let query = `
+            SELECT "C_Code","c_name","c_short_name",
+                   "C_travel_desk_location","C_travel_desk_incharge",
+                   "C_material_desk_location","C_material_desk_incharge",
+                   "N_SFA_ROLE","D_created","D_modified", COUNT(*) OVER() as total_count
+            FROM "tbl_department_mst"
+            WHERE "N_deleted" = 0
+        `;
+        const params = [];
 
-        if (!name || name.trim() === '*') {
-            query = `
-                SELECT "C_Code","c_name","c_short_name",
-                       "C_travel_desk_location","C_travel_desk_incharge",
-                       "C_material_desk_location","C_material_desk_incharge",
-                       "N_SFA_ROLE","D_created","D_modified"
-                FROM "tbl_department_mst"
-                WHERE "N_deleted" = 0
-                ORDER BY "C_Code"
-            `;
-            params = [];
-        } else if (name.includes('*')) {
-            const likePattern = name.trim().replace(/\*/g, '%');
-            query = `
-                SELECT "C_Code","c_name","c_short_name",
-                       "C_travel_desk_location","C_travel_desk_incharge",
-                       "C_material_desk_location","C_material_desk_incharge",
-                       "N_SFA_ROLE","D_created","D_modified"
-                FROM "tbl_department_mst"
-                WHERE LOWER("c_name") LIKE LOWER($1) AND "N_deleted" = 0
-                ORDER BY "C_Code"
-            `;
-            params = [likePattern];
-        } else {
-            query = `
-                SELECT "C_Code","c_name","c_short_name",
-                       "C_travel_desk_location","C_travel_desk_incharge",
-                       "C_material_desk_location","C_material_desk_incharge",
-                       "N_SFA_ROLE","D_created","D_modified"
-                FROM "tbl_department_mst"
-                WHERE LOWER("c_name") = LOWER($1) AND "N_deleted" = 0
-                ORDER BY "C_Code"
-            `;
-            params = [name.trim()];
+        if (search && search !== '*') {
+            let pattern = search;
+            if (pattern.includes('*')) {
+                pattern = pattern.replace(/\*/g, '%');
+            } else {
+                pattern = `%${pattern}%`;
+            }
+            query += ` AND (LOWER("c_name") LIKE LOWER($1) OR LOWER("C_Code") LIKE LOWER($1))`;
+            params.push(pattern);
         }
+
+        query += ` ORDER BY "C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
 
         const result = await pool.query(query, params);
 
+        const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+        const totalPages = Math.ceil(total / limit);
+
+        const data = result.rows.map(row => {
+            const { total_count, ...rest } = row;
+            return {
+                ...rest,
+                sfa_role_label: rest.N_SFA_ROLE === 1 ? 'Yes' : 'No'
+            };
+        });
+
         return res.status(200).json({
             success: true,
-            count: result.rows.length,
-            data: result.rows.map(row => ({
-                ...row,
-                sfa_role_label: row.N_SFA_ROLE === 1 ? 'Yes' : 'No'
-            }))
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages
+            },
+            data
         });
 
     } catch (err) {
         console.error('Department getAll error:', err.message);
-        return res.status(500).json({ success: false, message: 'Server error.' });
-    }
-}
-
-// ─── GET ONE ──────────────────────────────────────────────────
-// GET /api/masters/department/:code
-async function getOne(req, res) {
-    const { code } = req.params;
-
-    try {
-        const result = await pool.query(
-            `SELECT "C_Code","c_name","c_short_name",
-                    "C_travel_desk_location","C_travel_desk_incharge",
-                    "C_material_desk_location","C_material_desk_incharge",
-                    "N_SFA_ROLE","D_created","D_modified","C_modifier"
-             FROM "tbl_department_mst"
-             WHERE "C_Code" = $1 AND "N_deleted" = 0`,
-            [code.toUpperCase()]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Department "${code}" not found.` });
-        }
-
-        const row = result.rows[0];
-        return res.status(200).json({
-            success: true,
-            data: { ...row, sfa_role_label: row.N_SFA_ROLE === 1 ? 'Yes' : 'No' }
-        });
-
-    } catch (err) {
-        console.error('Department getOne error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
@@ -411,4 +392,4 @@ async function remove(req, res) {
     }
 }
 
-module.exports = { getLocations, create, getAll, getOne, update, remove };
+module.exports = { getLocations, create, getAll, update, remove };

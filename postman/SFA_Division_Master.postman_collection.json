@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "SFA Designation Master API",
-    "_postman_id": "sfa-designation-master-collection",
-    "description": "CRUD API for Designation Master.\n\nTable: tbl_desig_mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix DES (DES001, DES002...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name and code (e.g. searching '0001' matches 'DES0001').",
+    "name": "SFA Division Master API",
+    "_postman_id": "sfa-division-master-collection",
+    "description": "CRUD API for Division Master.\n\nTable: Tbl_Div_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix DI (DI0001, DI0034...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name and code (e.g. searching '0001' matches 'DI0001').",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,15 +18,15 @@
       "description": "Paste your accessToken here, or run Login from Auth collection first"
     },
     {
-      "key": "desigCode",
-      "value": "DES001",
+      "key": "divCode",
+      "value": "DI0001",
       "type": "string",
-      "description": "Code of the designation to update/delete"
+      "description": "Code of the division to update/delete"
     }
   ],
   "item": [
     {
-      "name": "1. Create Designation",
+      "name": "1. Create Division",
       "event": [
         {
           "listen": "test",
@@ -34,7 +34,7 @@
             "exec": [
               "const res = pm.response.json();",
               "if (res.success && res.data) {",
-              "  pm.collectionVariables.set('desigCode', res.data.c_code);",
+              "  pm.collectionVariables.set('divCode', res.data.c_code);",
               "  console.log('✅ Created:', res.data.c_code);",
               "}"
             ],
@@ -50,15 +50,15 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"c_name\": \"Sales Manager\",\n  \"c_sh_name\": \"SM\"\n}",
+          "raw": "{\n  \"c_name\": \"Gastro Division\",\n  \"c_sh_name\": \"GD\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation",
+          "raw": "{{baseUrl}}/api/masters/division",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation"]
+          "path": ["api", "masters", "division"]
         },
-        "description": "Creates a new designation.\n\nCode is auto-generated incrementally with prefix DES (DES001, DES002...).\nThe created code is auto-saved to {{desigCode}} variable.\n\nFields:\n- c_name (required): Designation name\n- c_sh_name (optional): Short name"
+        "description": "Creates a new division.\n\nCode is auto-generated incrementally with prefix DI (DI0001, DI0002...).\nThe created code is auto-saved to {{divCode}} variable.\n\nFields:\n- c_name (required): Division name\n- c_sh_name (optional): Short name"
       },
       "response": [
         {
@@ -66,14 +66,14 @@
           "status": "Created",
           "code": 201,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Designation created successfully.\",\n  \"data\": {\n    \"c_code\": \"DES001\",\n    \"c_name\": \"Sales Manager\",\n    \"c_sh_name\": \"SM\"\n  }\n}"
+          "body": "{\n  \"success\": true,\n  \"message\": \"Division created successfully.\",\n  \"data\": {\n    \"c_code\": \"DI0001\",\n    \"c_name\": \"Gastro Division\",\n    \"c_sh_name\": \"GD\"\n  }\n}"
         },
         {
           "name": "Error - Duplicate Name",
           "status": "Conflict",
           "code": 409,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Designation \\\"Sales Manager\\\" already exists.\"\n}"
+          "body": "{\n  \"success\": false,\n  \"message\": \"Division \\\"Gastro Division\\\" already exists.\"\n}"
         },
         {
           "name": "Error - Missing Name",
@@ -92,9 +92,9 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation",
+          "raw": "{{baseUrl}}/api/masters/division",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation"]
+          "path": ["api", "masters", "division"]
         },
         "description": "By default (empty search term), returns empty data block without querying database."
       },
@@ -116,16 +116,16 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation?search=*&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/division?search=*&page=1&limit=10",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation"],
+          "path": ["api", "masters", "division"],
           "query": [
             { "key": "search", "value": "*" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]
         },
-        "description": "Returns all active designations paginated."
+        "description": "Returns all active divisions paginated."
       },
       "response": [
         {
@@ -133,28 +133,28 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\", \"c_sh_name\": \"SM\", \"d_created\": \"2026-05-25T05:00:00.000Z\", \"d_modified\": null },\n    { \"c_code\": \"DES002\", \"c_name\": \"Regional Manager\", \"c_sh_name\": \"RM\", \"d_created\": \"2026-05-25T05:01:00.000Z\", \"d_modified\": null }\n  ]\n}"
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DI0001\", \"c_name\": \"Gastro Division\", \"c_sh_name\": \"GD\", \"d_created\": \"2026-05-25T05:00:00.000Z\", \"d_modified\": null },\n    { \"c_code\": \"DI0002\", \"c_name\": \"Cardio Division\", \"c_sh_name\": \"CD\", \"d_created\": \"2026-05-25T05:01:00.000Z\", \"d_modified\": null }\n  ]\n}"
         }
       ]
     },
     {
-      "name": "4. Search — Keyword (Sales)",
+      "name": "4. Search — Keyword (Gastro)",
       "request": {
         "method": "GET",
         "header": [
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation?search=Sales&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/division?search=Gastro&page=1&limit=10",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation"],
+          "path": ["api", "masters", "division"],
           "query": [
-            { "key": "search", "value": "Sales" },
+            { "key": "search", "value": "Gastro" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]
         },
-        "description": "Search designations whose name or code contains 'Sales'."
+        "description": "Search divisions whose name or code contains 'Gastro'."
       },
       "response": [
         {
@@ -162,7 +162,7 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DES001\", \"c_name\": \"Sales Manager\", \"c_sh_name\": \"SM\" }\n  ]\n}"
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DI0001\", \"c_name\": \"Gastro Division\", \"c_sh_name\": \"GD\" }\n  ]\n}"
         }
       ]
     },
@@ -174,16 +174,16 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation?search=0001&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/division?search=0001&page=1&limit=10",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation"],
+          "path": ["api", "masters", "division"],
           "query": [
             { "key": "search", "value": "0001" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]
         },
-        "description": "Search designations whose code contains '0001' (matches DES0001)."
+        "description": "Search divisions whose code contains '0001' (matches DI0001)."
       },
       "response": [
         {
@@ -191,12 +191,12 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DES0001\", \"c_name\": \"Sales Director\", \"c_sh_name\": \"SD\" }\n  ]\n}"
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    { \"c_code\": \"DI0001\", \"c_name\": \"Gastro Division\", \"c_sh_name\": \"GD\" }\n  ]\n}"
         }
       ]
     },
     {
-      "name": "6. Update Designation",
+      "name": "6. Update Division",
       "request": {
         "method": "PUT",
         "header": [
@@ -205,15 +205,15 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"c_name\": \"Senior Sales Manager\",\n  \"c_sh_name\": \"SSM\"\n}",
+          "raw": "{\n  \"c_name\": \"Senior Gastro Division\",\n  \"c_sh_name\": \"SGD\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation/{{desigCode}}",
+          "raw": "{{baseUrl}}/api/masters/division/{{divCode}}",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation", "{{desigCode}}"]
+          "path": ["api", "masters", "division", "{{divCode}}"]
         },
-        "description": "Update name and/or short name of a designation.\n\nCode cannot be changed."
+        "description": "Update name and/or short name of a division.\n\nCode cannot be changed."
       },
       "response": [
         {
@@ -221,30 +221,30 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Designation updated successfully.\",\n  \"data\": {\n    \"c_code\": \"DES001\",\n    \"c_name\": \"Senior Sales Manager\",\n    \"c_sh_name\": \"SSM\"\n  }\n}"
+          "body": "{\n  \"success\": true,\n  \"message\": \"Division updated successfully.\",\n  \"data\": {\n    \"c_code\": \"DI0001\",\n    \"c_name\": \"Senior Gastro Division\",\n    \"c_sh_name\": \"SGD\"\n  }\n}"
         },
         {
           "name": "Error - Duplicate Name",
           "status": "Conflict",
           "code": 409,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Another designation with name \\\"Senior Sales Manager\\\" already exists.\"\n}"
+          "body": "{\n  \"success\": false,\n  \"message\": \"Another division with name \\\"Senior Gastro Division\\\" already exists.\"\n}"
         }
       ]
     },
     {
-      "name": "7. Delete Designation",
+      "name": "7. Delete Division",
       "request": {
         "method": "DELETE",
         "header": [
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/designation/{{desigCode}}",
+          "raw": "{{baseUrl}}/api/masters/division/{{divCode}}",
           "host": ["{{baseUrl}}"],
-          "path": ["api", "masters", "designation", "{{desigCode}}"]
+          "path": ["api", "masters", "division", "{{divCode}}"]
         },
-        "description": "Soft deletes a designation (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database."
+        "description": "Soft deletes a division (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database."
       },
       "response": [
         {
@@ -252,14 +252,14 @@
           "status": "OK",
           "code": 200,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Designation \\\"DES001\\\" deleted successfully.\"\n}"
+          "body": "{\n  \"success\": true,\n  \"message\": \"Division \\\"DI0001\\\" deleted successfully.\"\n}"
         },
         {
           "name": "Error - Not Found",
           "status": "Not Found",
           "code": 404,
           "header": [{ "key": "Content-Type", "value": "application/json" }],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Designation \\\"DES001\\\" not found.\"\n}"
+          "body": "{\n  \"success\": false,\n  \"message\": \"Division \\\"DI0001\\\" not found.\"\n}"
         }
       ]
     }
