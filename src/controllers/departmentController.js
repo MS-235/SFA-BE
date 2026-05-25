@@ -172,14 +172,15 @@ async function create(req, res) {
 }
 
 // ─── GET ALL / SEARCH ─────────────────────────────────────────
-// GET /api/masters/department?search=Sales&page=1&limit=10
+// GET /api/masters/department?search=Sales&code=0001&page=1&limit=10
 async function getAll(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const offset = (page - 1) * limit;
     const search = (req.query.search || req.query.name || '').trim();
+    const code = (req.query.code || '').trim();
 
-    if (!search) {
+    if (!search && !code) {
         return res.status(200).json({
             success: true,
             pagination: {
@@ -210,8 +211,19 @@ async function getAll(req, res) {
             } else {
                 pattern = `%${pattern}%`;
             }
-            query += ` AND (LOWER("c_name") LIKE LOWER($1) OR LOWER("C_Code") LIKE LOWER($1))`;
             params.push(pattern);
+            query += ` AND LOWER("c_name") LIKE LOWER($${params.length})`;
+        }
+
+        if (code && code !== '*') {
+            let pattern = code;
+            if (pattern.includes('*')) {
+                pattern = pattern.replace(/\*/g, '%');
+            } else {
+                pattern = `%${pattern}%`;
+            }
+            params.push(pattern);
+            query += ` AND LOWER("C_Code") LIKE LOWER($${params.length})`;
         }
 
         query += ` ORDER BY "C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;

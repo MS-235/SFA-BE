@@ -174,11 +174,11 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/division?search=0001&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/division?code=0001&page=1&limit=10",
           "host": ["{{baseUrl}}"],
           "path": ["api", "masters", "division"],
           "query": [
-            { "key": "search", "value": "0001" },
+            { "key": "code", "value": "0001" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]

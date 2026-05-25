@@ -219,11 +219,11 @@
         "method": "GET",
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/department?search=0001&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/department?code=0001&page=1&limit=10",
           "host": ["{{baseUrl}}"],
           "path": ["api","masters","department"],
           "query": [
-            { "key": "search", "value": "0001" },
+            { "key": "code", "value": "0001" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]

@@ -27,16 +27,41 @@ function verifyRefreshToken(token) {
 }
 
 /**
- * Convert a duration string like '7d' / '15m' / '2h' to a future Date.
+ * Convert a duration string like '7d' / '15m' / '2h' / '1min' / '10sec' to a future Date.
  * Used to store d_token_valid_to in Tbl_Device_Login_Token_Details.
  */
 function durationToDate(duration) {
-    const unit  = duration.slice(-1);
-    const value = parseInt(duration.slice(0, -1), 10);
-    const date  = new Date();
-    if      (unit === 'd') date.setDate(date.getDate() + value);
-    else if (unit === 'h') date.setHours(date.getHours() + value);
-    else if (unit === 'm') date.setMinutes(date.getMinutes() + value);
+    if (!duration || typeof duration !== 'string') {
+        return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days fallback
+    }
+
+    const match = duration.trim().match(/^(\d+)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours|d|day|days)$/i);
+    if (!match) {
+        // Try fallback parsing
+        const val = parseInt(duration, 10);
+        if (!isNaN(val)) {
+            const lastChar = duration.trim().slice(-1).toLowerCase();
+            if (lastChar === 's') return new Date(Date.now() + val * 1000);
+            if (lastChar === 'm') return new Date(Date.now() + val * 60 * 1000);
+            if (lastChar === 'h') return new Date(Date.now() + val * 60 * 60 * 1000);
+            if (lastChar === 'd') return new Date(Date.now() + val * 24 * 60 * 60 * 1000);
+        }
+        return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days fallback
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2].toLowerCase();
+    const date = new Date();
+
+    if (unit.startsWith('s')) {
+        date.setSeconds(date.getSeconds() + value);
+    } else if (unit.startsWith('m')) {
+        date.setMinutes(date.getMinutes() + value);
+    } else if (unit.startsWith('h')) {
+        date.setHours(date.getHours() + value);
+    } else if (unit.startsWith('d')) {
+        date.setDate(date.getDate() + value);
+    }
     return date;
 }
 

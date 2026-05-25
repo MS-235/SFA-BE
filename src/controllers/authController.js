@@ -209,7 +209,7 @@ async function login(req, res) {
                 "d_token_issued_date", "d_token_valid_to",
                 "n_enable", "n_device_type", "c_company_id")
              VALUES ($1, $2, $3, NOW(), $4, 1, 0, $5)`,
-            [refreshToken, user.C_UserID, user.C_Code, validTo, tokenId]
+            [refreshToken, user.C_UserID, user.C_Code, validTo.toISOString(), tokenId]
         );
 
         return res.status(200).json({
@@ -267,7 +267,8 @@ async function refresh(req, res) {
         // ── Check token exists in DB and is still active ──
         const tokenRow = await pool.query(
             `SELECT "c_token_id", "c_user_id", "c_emp_code",
-                    "d_token_valid_to", "n_enable"
+                    "d_token_valid_to", "n_enable",
+                    (CASE WHEN "d_token_valid_to" < NOW() THEN 1 ELSE 0 END) as "is_expired"
              FROM "Tbl_Device_Login_Token_Details"
              WHERE "c_token_id" = $1
              LIMIT 1`,
@@ -290,7 +291,7 @@ async function refresh(req, res) {
             });
         }
 
-        if (new Date(stored.d_token_valid_to) < new Date()) {
+        if (stored.is_expired === 1) {
             // Mark as revoked
             await pool.query(
                 `UPDATE "Tbl_Device_Login_Token_Details"
@@ -348,7 +349,7 @@ async function refresh(req, res) {
                 "d_token_issued_date", "d_token_valid_to",
                 "n_enable", "n_device_type", "c_company_id")
              VALUES ($1, $2, $3, NOW(), $4, 1, 0, $5)`,
-            [newRefreshToken, user.C_UserID, user.C_Code, validTo, tokenId]
+            [newRefreshToken, user.C_UserID, user.C_Code, validTo.toISOString(), tokenId]
         );
 
         return res.status(200).json({
