@@ -124,18 +124,18 @@
       ]
     },
     {
-      "name": "4. Search — Keyword (Cyber Towers)",
+      "name": "4. Search — Sub Area Name (Cyber Towers)",
       "request": {
         "method": "GET",
         "header": [
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/sub-area?search=Cyber Towers&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/sub-area?sub_area_name=Cyber Towers&page=1&limit=10",
           "host": ["{{baseUrl}}"],
           "path": ["api", "masters", "sub-area"],
           "query": [
-            { "key": "search", "value": "Cyber Towers" },
+            { "key": "sub_area_name", "value": "Cyber Towers" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]
@@ -182,18 +182,18 @@
       ]
     },
     {
-      "name": "6. Search — Area (Gachibowli)",
+      "name": "6. Search — Area Name (Gachibowli)",
       "request": {
         "method": "GET",
         "header": [
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/masters/sub-area?area=Gachibowli&page=1&limit=10",
+          "raw": "{{baseUrl}}/api/masters/sub-area?area_name=Gachibowli&page=1&limit=10",
           "host": ["{{baseUrl}}"],
           "path": ["api", "masters", "sub-area"],
           "query": [
-            { "key": "area", "value": "Gachibowli" },
+            { "key": "area_name", "value": "Gachibowli" },
             { "key": "page", "value": "1" },
             { "key": "limit", "value": "10" }
           ]

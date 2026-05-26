@@ -179,9 +179,9 @@ async function getAll(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const offset = (page - 1) * limit;
-    const search = (req.query.search || req.query.name || '').trim();
+    const search = (req.query.sub_area_name || req.query.subAreaName || req.query.search || req.query.name || '').trim();
     const code = (req.query.code || '').trim();
-    const area = (req.query.area || req.query.area_code || req.query.areaCode || '').trim();
+    const area = (req.query.area_name || req.query.areaName || req.query.area || req.query.area_code || req.query.areaCode || '').trim();
 
     if (!search && !code && !area) {
         return res.status(200).json({

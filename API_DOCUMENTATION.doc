@@ -847,7 +847,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, NOW(), $9);</pre>
 
 <h2>4.3 Get All / Search Sub Areas</h2>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/sub-area</code></p>
-<p><strong>Description:</strong> Retrieves a paginated list of sub areas. Supports wildcards and filtering by name, code, and area.</p>
+<p><strong>Description:</strong> Retrieves a paginated list of sub areas. Supports wildcards and filtering by sub_area_name, code, and area_name.</p>
 
 <h3>Database Queries Executed:</h3>
 <pre>SELECT sa."C_Code" as c_code, sa."C_Name" as c_name, sa."C_Sh_Name" as c_sh_name, 
@@ -897,6 +897,154 @@ SET
   "d_modified" = NOW(), 
   "c_modifier" = $1
 WHERE "C_Code" = $2;</pre>
+
+<hr />
+
+<h1>💼 Part 5: Work Type Master</h1>
+<p>The Work Type Master manages work activities or session configurations. It requires manual unique code input (e.g. <code>W0001</code>, <code>W0002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_WorkType</code></td>
+        <td>
+            <code>c_code</code> VARCHAR(10) Primary Key (Manual, Uppercase)<br />
+            <code>c_name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>c_sh_name</code> VARCHAR(5) Nullable<br />
+            <code>n_flag</code> INTEGER Not Null (Doctor flag: 0/1)<br />
+            <code>n_Chflag</code> INTEGER Not Null (Chemist flag: 0/1)<br />
+            <code>n_stockflag</code> INTEGER Not Null (Stockist flag: 0/1)<br />
+            <code>n_OthersFlag</code> INTEGER Not Null (Others flag: 0/1)<br />
+            <code>n_campflag</code> INTEGER Not Null (Promotional flag: 0/1)<br />
+            <code>n_chemorder</code> INTEGER Not Null (Orders flag: 0/1)<br />
+            <code>n_PatientFlag</code> INTEGER Not Null (Patient flag: 0/1)<br />
+            <code>n_HospitalFlag</code> INTEGER Not Null (Hospital flag: 0/1)<br />
+            <code>N_Status</code> INTEGER Not Null (Status flag: 0=Inactive, 1=Active)<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)
+        </td>
+        <td>
+            * Unique name check among active records<br />
+            * Code must be unique, manual input, max 10 chars<br />
+            * All radio button flags (n_flag, n_Chflag, etc.) are mandatory and must be 0 or 1<br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h2>5.1 Create Work Type</h2>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/work-type</code></p>
+<p><strong>Description:</strong> Creates a new work type. Enforces uppercase code uniqueness, case-insensitive name uniqueness, and validation for all mandatory flags.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Code Duplicate Check</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_WorkType" 
+WHERE "c_code" = $1 
+  AND "n_deleted" = 0;</pre>
+
+<h4>Query 2: Name Duplicate Check</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_WorkType" 
+WHERE LOWER("c_name") = LOWER($1) 
+  AND "n_deleted" = 0;</pre>
+
+<h4>Query 3: Insert Work Type</h4>
+<pre>INSERT INTO "Tbl_WorkType" (
+  "c_code", 
+  "c_name", 
+  "c_sh_name", 
+  "n_flag", 
+  "n_Chflag", 
+  "n_stockflag", 
+  "n_OthersFlag", 
+  "n_campflag", 
+  "n_chemorder", 
+  "n_PatientFlag", 
+  "n_HospitalFlag", 
+  "N_Status", 
+  "n_deleted", 
+  "d_created", 
+  "c_modifier"
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, NOW(), $13);</pre>
+
+---
+
+<h2>5.2 Get All / Search Work Types</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/work-type</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of work types. Supports wildcard searches on code and name query parameters (when * is provided, matches all).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "c_code", "c_name", "c_sh_name", 
+       "n_flag", "n_Chflag", "n_stockflag", "n_OthersFlag", "n_campflag", "n_chemorder", "n_PatientFlag", "n_HospitalFlag", 
+       "N_Status" as n_status, "d_created", "d_modified", COUNT(*) OVER() as total_count
+FROM "Tbl_WorkType"
+WHERE "n_deleted" = 0
+  AND LOWER("c_name") LIKE LOWER($1)
+  AND LOWER("c_code") LIKE LOWER($2)
+ORDER BY "c_code"
+LIMIT $3 OFFSET $4;</pre>
+
+---
+
+<h2>5.3 Update Work Type</h2>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/work-type/:code</code></p>
+<p><strong>Description:</strong> Updates an existing work type. Validates existence, name duplication (excluding self), and all mandatory flags.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Verify Record Exists</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_WorkType" 
+WHERE "c_code" = $1 
+  AND "n_deleted" = 0;</pre>
+
+<h4>Query 2: Uniqueness Check (Excluding Self)</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_WorkType" 
+WHERE LOWER("c_name") = LOWER($1) 
+  AND "n_deleted" = 0 
+  AND "c_code" != $2;</pre>
+
+<h4>Query 3: Apply Updates</h4>
+<pre>UPDATE "Tbl_WorkType"
+SET 
+  "c_name" = $1, 
+  "c_sh_name" = $2,
+  "n_flag" = $3, 
+  "n_Chflag" = $4, 
+  "n_stockflag" = $5, 
+  "n_OthersFlag" = $6,
+  "n_campflag" = $7, 
+  "n_chemorder" = $8, 
+  "n_PatientFlag" = $9, 
+  "n_HospitalFlag" = $10,
+  "N_Status" = $11, 
+  "d_modified" = NOW(), 
+  "c_modifier" = $12
+WHERE "c_code" = $13;</pre>
+
+---
+
+<h2>5.4 Delete Work Type (Soft Delete)</h2>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/work-type/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a work type record by setting `n_deleted = 1`.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_WorkType"
+SET 
+  "n_deleted" = 1, 
+  "d_modified" = NOW(), 
+  "c_modifier" = $1
+WHERE "c_code" = $2;</pre>
 
 </body>
 </html>

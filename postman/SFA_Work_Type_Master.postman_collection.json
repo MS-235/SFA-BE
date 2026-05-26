@@ -1,0 +1,239 @@
+{
+  "info": {
+    "name": "SFA Work Type Master API",
+    "_postman_id": "sfa-work-type-master-collection",
+    "description": "CRUD API for Work Type Master.\n\nTable: Tbl_WorkType\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is manually entered (mandatory) and must be unique.\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name (e.g. searching 'Field' matches 'Field Work').\n- code=keyword -> search by Work Type Code.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "workTypeCode",
+      "value": "WT001",
+      "type": "string",
+      "description": "Code of the work type to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Work Type",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('workTypeCode', res.data.c_code);",
+              "  console.log('✅ Created Work Type:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_code\": \"WT001\",\n  \"c_name\": \"Field Work\",\n  \"c_sh_name\": \"FW\",\n  \"n_flag\": 1,\n  \"n_Chflag\": 1,\n  \"n_stockflag\": 1,\n  \"n_OthersFlag\": 0,\n  \"n_campflag\": 1,\n  \"n_chemorder\": 0,\n  \"n_PatientFlag\": 0,\n  \"n_HospitalFlag\": 1,\n  \"n_status\": 1\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type"]
+        },
+        "description": "Creates a new work type.\n\nFields:\n- c_code (required): Unique manually entered code\n- c_name (required): Work Type name\n- c_sh_name (optional): Short name (maximum 5 characters)\n- n_flag (required): Doctor flag (0 or 1)\n- n_Chflag (required): Chemist flag (0 or 1)\n- n_stockflag (required): Stockist flag (0 or 1)\n- n_OthersFlag (required): Others flag (0 or 1)\n- n_campflag (required): Promotional Activities flag (0 or 1)\n- n_chemorder (required): Orders flag (0 or 1)\n- n_PatientFlag (required): Patient flag (0 or 1)\n- n_HospitalFlag (required): Hospital flag (0 or 1)\n- n_status (required): status Flag (1 = Active, 0 = Inactive)"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Work Type created successfully.\",\n  \"data\": {\n    \"c_code\": \"WT001\",\n    \"c_name\": \"Field Work\",\n    \"c_sh_name\": \"FW\",\n    \"n_flag\": 1,\n    \"n_Chflag\": 1,\n    \"n_stockflag\": 1,\n    \"n_OthersFlag\": 0,\n    \"n_campflag\": 1,\n    \"n_chemorder\": 0,\n    \"n_PatientFlag\": 0,\n    \"n_HospitalFlag\": 1,\n    \"n_status\": 1\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type"]
+        },
+        "description": "By default (empty search term), returns empty data block without querying database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (search=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type?search=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type"],
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Returns all active work types paginated."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"WT001\",\n      \"c_name\": \"Field Work\",\n      \"c_sh_name\": \"FW\",\n      \"n_flag\": 1,\n      \"n_Chflag\": 1,\n      \"n_stockflag\": 1,\n      \"n_OthersFlag\": 0,\n      \"n_campflag\": 1,\n      \"n_chemorder\": 0,\n      \"n_PatientFlag\": 0,\n      \"n_HospitalFlag\": 1,\n      \"n_status\": 1,\n      \"d_created\": \"2026-05-26T05:00:00.000Z\",\n      \"d_modified\": null\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Name (Field)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type?search=Field&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type"],
+          "query": [
+            { "key": "search", "value": "Field" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search work types by Name."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"WT001\",\n      \"c_name\": \"Field Work\",\n      \"c_sh_name\": \"FW\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Code (WT001)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type?code=WT001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type"],
+          "query": [
+            { "key": "code", "value": "WT001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search work types by Code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"WT001\",\n      \"c_name\": \"Field Work\",\n      \"c_sh_name\": \"FW\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Update Work Type",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Updated Field Work\",\n  \"c_sh_name\": \"UFW\",\n  \"n_flag\": 0,\n  \"n_Chflag\": 0,\n  \"n_stockflag\": 0,\n  \"n_OthersFlag\": 1,\n  \"n_campflag\": 0,\n  \"n_chemorder\": 1,\n  \"n_PatientFlag\": 1,\n  \"n_HospitalFlag\": 0,\n  \"n_status\": 0\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type/{{workTypeCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type", "{{workTypeCode}}"]
+        },
+        "description": "Update all mutable fields of a work type (excluding code)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Work Type updated successfully.\",\n  \"data\": {\n    \"c_code\": \"WT001\",\n    \"c_name\": \"Updated Field Work\",\n    \"c_sh_name\": \"UFW\",\n    \"n_flag\": 0,\n    \"n_Chflag\": 0,\n    \"n_stockflag\": 0,\n    \"n_OthersFlag\": 1,\n    \"n_campflag\": 0,\n    \"n_chemorder\": 1,\n    \"n_PatientFlag\": 1,\n    \"n_HospitalFlag\": 0,\n    \"n_status\": 0\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Delete Work Type",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type/{{workTypeCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type", "{{workTypeCode}}"]
+        },
+        "description": "Soft deletes a work type (sets n_deleted = 1)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Work Type \\\"WT001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    }
+  ]
+}

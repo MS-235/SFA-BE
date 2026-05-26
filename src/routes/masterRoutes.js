@@ -8,6 +8,7 @@ const zone = require('../controllers/zoneController');
 const region = require('../controllers/regionController');
 const area = require('../controllers/areaController');
 const subArea = require('../controllers/subAreaController');
+const workType = require('../controllers/workTypeController');
 
 
 // All master routes require a valid admin token
@@ -64,5 +65,11 @@ router.post('/sub-area',                subArea.create);
 router.get('/sub-area',                 subArea.getAll);
 router.put('/sub-area/:code',           subArea.update);
 router.delete('/sub-area/:code',        subArea.remove);
+
+// ── Work Type Master ─────────────────────────────────────────
+router.post('/work-type',         workType.create);
+router.get('/work-type',          workType.getAll);
+router.put('/work-type/:code',    workType.update);
+router.delete('/work-type/:code', workType.remove);
 
 module.exports = router;
