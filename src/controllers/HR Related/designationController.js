@@ -1,34 +1,35 @@
-const pool = require('../config/db');
+const pool = require('../../config/db');
 
 // ─────────────────────────────────────────────────────────────
-// TABLE: Tbl_Zone_Mst
-//   C_Code     VARCHAR(10) PK  — auto-generated: Z00001, Z00002...
-//   C_Name     VARCHAR(50)     — Name
-//   C_Sh_Name  VARCHAR(7)      — Short Name (optional)
+// TABLE: tbl_desig_mst
+//   c_code     VARCHAR(50) PK  — auto-generated: DES001, DES002...
+//   c_name     VARCHAR(50)     — Name
+//   c_sh_name  VARCHAR(50)     — Short Name
 //   n_deleted  SMALLINT        — 0 = active, 1 = deleted
-//   d_created  TIMESTAMP
-//   d_modified TIMESTAMP
-//   c_modifier VARCHAR(10)     — last modified by (c_user_id)
+//   d_created  DATETIME
+//   d_modified DATETIME
+//   c_modifier VARCHAR(50)     — last modified by (c_user_id)
 // ─────────────────────────────────────────────────────────────
 
-// ── Helper: generate next Z code ─────────────────────────────
+// ── Helper: generate next DES code ───────────────────────────
 async function generateNextCode() {
+    // Get the highest existing numeric suffix from codes like DES001, DES041
     const result = await pool.query(`
-        SELECT "C_Code" FROM "Tbl_Zone_Mst"
-        WHERE "C_Code" ~ '^Z[0-9]+$'
-        ORDER BY CAST(SUBSTRING("C_Code" FROM 2) AS INTEGER) DESC
+        SELECT "c_code" FROM "tbl_desig_mst"
+        WHERE "c_code" ~ '^DES[0-9]+$'
+        ORDER BY CAST(SUBSTRING("c_code" FROM 4) AS INTEGER) DESC
         LIMIT 1
     `);
 
-    if (result.rows.length === 0) return 'Z00001';
+    if (result.rows.length === 0) return 'DES001';
 
-    const lastNum = parseInt(result.rows[0].C_Code.replace('Z', ''), 10);
+    const lastNum = parseInt(result.rows[0].c_code.replace('DES', ''), 10);
     const nextNum = lastNum + 1;
-    return 'Z' + String(nextNum).padStart(5, '0');
+    return 'DES' + String(nextNum).padStart(3, '0');
 }
 
 // ─── CREATE ───────────────────────────────────────────────────
-// POST /api/masters/zone
+// POST /api/masters/designation
 async function create(req, res) {
     const { c_name, c_sh_name } = req.body;
 
@@ -39,29 +40,29 @@ async function create(req, res) {
     try {
         // Check duplicate name
         const dup = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Zone_Mst"
-             WHERE LOWER("C_Name") = LOWER($1) AND "n_deleted" = 0`,
+            `SELECT "c_code" FROM "tbl_desig_mst"
+             WHERE LOWER("c_name") = LOWER($1) AND "n_deleted" = 0`,
             [c_name.trim()]
         );
         if (dup.rows.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: `Zone "${c_name}" already exists.`
+                message: `Designation "${c_name}" already exists.`
             });
         }
 
         const c_code = await generateNextCode();
 
         await pool.query(
-            `INSERT INTO "Tbl_Zone_Mst"
-               ("C_Code", "C_Name", "C_Sh_Name", "n_deleted", "d_created", "c_modifier")
+            `INSERT INTO "tbl_desig_mst"
+               ("c_code", "c_name", "c_sh_name", "n_deleted", "d_created", "c_modifier")
              VALUES ($1, $2, $3, 0, NOW(), $4)`,
             [c_code, c_name.trim(), c_sh_name ? c_sh_name.trim() : null, req.admin.c_user_id]
         );
 
         return res.status(201).json({
             success: true,
-            message: 'Zone created successfully.',
+            message: 'Designation created successfully.',
             data: {
                 c_code,
                 c_name:    c_name.trim(),
@@ -70,13 +71,13 @@ async function create(req, res) {
         });
 
     } catch (err) {
-        console.error('Zone create error:', err.message);
+        console.error('Designation create error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── GET ALL / SEARCH ─────────────────────────────────────────
-// GET /api/masters/zone?search=South&code=Z00001&page=1&limit=10
+// GET /api/masters/designation?search=Sales&code=DES001&page=1&limit=10
 async function getAll(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
@@ -99,8 +100,8 @@ async function getAll(req, res) {
 
     try {
         let query = `
-            SELECT "C_Code" as c_code, "C_Name" as c_name, "C_Sh_Name" as c_sh_name, "d_created", "d_modified", COUNT(*) OVER() as total_count
-            FROM "Tbl_Zone_Mst"
+            SELECT "c_code", "c_name", "c_sh_name", "d_created", "d_modified", COUNT(*) OVER() as total_count
+            FROM "tbl_desig_mst"
             WHERE "n_deleted" = 0
         `;
         const params = [];
@@ -113,7 +114,7 @@ async function getAll(req, res) {
                 pattern = `%${pattern}%`;
             }
             params.push(pattern);
-            query += ` AND LOWER("C_Name") LIKE LOWER($${params.length})`;
+            query += ` AND LOWER("c_name") LIKE LOWER($${params.length})`;
         }
 
         if (code && code !== '*') {
@@ -124,10 +125,10 @@ async function getAll(req, res) {
                 pattern = `%${pattern}%`;
             }
             params.push(pattern);
-            query += ` AND LOWER("C_Code") LIKE LOWER($${params.length})`;
+            query += ` AND LOWER("c_code") LIKE LOWER($${params.length})`;
         }
 
-        query += ` ORDER BY "C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        query += ` ORDER BY "c_code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
         params.push(limit, offset);
 
         const result = await pool.query(query, params);
@@ -152,13 +153,13 @@ async function getAll(req, res) {
         });
 
     } catch (err) {
-        console.error('Zone getAll error:', err.message);
+        console.error('Designation getAll error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────
-// PUT /api/masters/zone/:code
+// PUT /api/masters/designation/:code
 async function update(req, res) {
     const { code } = req.params;
     const { c_name, c_sh_name } = req.body;
@@ -170,38 +171,38 @@ async function update(req, res) {
     try {
         // Check exists
         const exists = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Zone_Mst"
-             WHERE "C_Code" = $1 AND "n_deleted" = 0`,
+            `SELECT "c_code" FROM "tbl_desig_mst"
+             WHERE "c_code" = $1 AND "n_deleted" = 0`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Zone "${code}" not found.` });
+            return res.status(404).json({ success: false, message: `Designation "${code}" not found.` });
         }
 
         // Check duplicate name (excluding self)
         const dup = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Zone_Mst"
-             WHERE LOWER("C_Name") = LOWER($1) AND "n_deleted" = 0 AND "C_Code" != $2`,
+            `SELECT "c_code" FROM "tbl_desig_mst"
+             WHERE LOWER("c_name") = LOWER($1) AND "n_deleted" = 0 AND "c_code" != $2`,
             [c_name.trim(), code.toUpperCase()]
         );
         if (dup.rows.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: `Another zone with name "${c_name}" already exists.`
+                message: `Another designation with name "${c_name}" already exists.`
             });
         }
 
         await pool.query(
-            `UPDATE "Tbl_Zone_Mst"
-             SET "C_Name" = $1, "C_Sh_Name" = $2,
+            `UPDATE "tbl_desig_mst"
+             SET "c_name" = $1, "c_sh_name" = $2,
                  "d_modified" = NOW(), "c_modifier" = $3
-             WHERE "C_Code" = $4`,
+             WHERE "c_code" = $4`,
             [c_name.trim(), c_sh_name ? c_sh_name.trim() : null, req.admin.c_user_id, code.toUpperCase()]
         );
 
         return res.status(200).json({
             success: true,
-            message: 'Zone updated successfully.',
+            message: 'Designation updated successfully.',
             data: {
                 c_code:    code.toUpperCase(),
                 c_name:    c_name.trim(),
@@ -210,46 +211,46 @@ async function update(req, res) {
         });
 
     } catch (err) {
-        console.error('Zone update error:', err.message);
+        console.error('Designation update error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── DELETE (soft) ────────────────────────────────────────────
-// DELETE /api/masters/zone/:code
+// DELETE /api/masters/designation/:code
 async function remove(req, res) {
     const { code } = req.params;
 
     try {
         const exists = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Zone_Mst"
-             WHERE "C_Code" = $1 AND "n_deleted" = 0`,
+            `SELECT "c_code" FROM "tbl_desig_mst"
+             WHERE "c_code" = $1 AND "n_deleted" = 0`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Zone "${code}" not found.` });
+            return res.status(404).json({ success: false, message: `Designation "${code}" not found.` });
         }
 
         await pool.query(
-            `UPDATE "Tbl_Zone_Mst"
+            `UPDATE "tbl_desig_mst"
              SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1
-             WHERE "C_Code" = $2`,
+             WHERE "c_code" = $2`,
             [req.admin.c_user_id, code.toUpperCase()]
         );
 
         return res.status(200).json({
             success: true,
-            message: `Zone "${code}" deleted successfully.`
+            message: `Designation "${code}" deleted successfully.`
         });
 
     } catch (err) {
-        console.error('Zone delete error:', err.message);
+        console.error('Designation delete error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── GET NEXT CODE ────────────────────────────────────────────
-// GET /api/masters/zone/next-code
+// GET /api/masters/designation/next-code
 async function getNextCode(req, res) {
     try {
         const nextCode = await generateNextCode();
@@ -258,7 +259,7 @@ async function getNextCode(req, res) {
             nextCode
         });
     } catch (err) {
-        console.error('Zone getNextCode error:', err.message);
+        console.error('Designation getNextCode error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }

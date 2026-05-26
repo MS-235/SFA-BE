@@ -125,13 +125,15 @@
 
 <h1>SFA Backend - Master Data Documentation</h1>
 <div class="intro">
-    This document serves as an engineering reference guide for the <strong>Designation Master</strong>, <strong>Department Master</strong>, <strong>Division Master</strong>, and <strong>Sub Area Master</strong> tables in the Sales Force Automation (SFA) backend system. 
-    It outlines the physical endpoints, parameters, tables, and provides step-by-step human explanations of the database queries.
+    This document serves as an engineering reference guide for the Sales Force Automation (SFA) backend system. 
+    It outlines the physical endpoints, parameters, tables, and provides step-by-step human explanations of the database queries, structured by functional navigation areas.
 </div>
 
 <hr />
 
-<h1>💼 Part 1: Designation Master</h1>
+<h1>💼 Part 1: HR Related Masters</h1>
+<p>Manages company personnel, job roles, departments, and their SFA-related features.</p>
+<h3>1.1.1 Designation Master</h3>
 <p>The Designation Master manages employee roles and job titles. It uses a structured alphanumeric code system (e.g. <code>DES001</code>, <code>DES002</code>).</p>
 
 <table style="width:100%">
@@ -160,7 +162,7 @@
 
 ---
 
-<h2>1.1 Get Next Designation Code</h2>
+<h3>1.1.1 Get Next Designation Code</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/designation/next-code</code></p>
 <p><strong>Description:</strong> Auto-calculates the next designation code in the sequence (e.g. if the highest code is <code>DES041</code>, it suggests <code>DES042</code>).</p>
 
@@ -184,7 +186,7 @@ LIMIT 1;</pre>
 
 ---
 
-<h2>1.2 Create Designation</h2>
+<h3>1.1.2 Create Designation</h3>
 <p><span class="badge badge-post">POST</span> <code>/api/masters/designation</code></p>
 <p><strong>Description:</strong> Creates a new designation. It enforces case-insensitive name uniqueness among active designations.</p>
 
@@ -229,7 +231,7 @@ VALUES (
 
 ---
 
-<h2>1.3 Get All / Search Designations</h2>
+<h3>1.1.3 Get All / Search Designations</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/designation</code></p>
 <p><strong>Description:</strong> Retrieves a paginated, searchable list of designations. It supports wildcard searches (`*` is translated to database `%`).</p>
 
@@ -261,7 +263,7 @@ OFFSET $4;  -- $4: Pagination skip offset (e.g. 0)</pre>
 
 ---
 
-<h2>1.4 Update Designation</h2>
+<h3>1.1.4 Update Designation</h3>
 <p><span class="badge badge-put">PUT</span> <code>/api/masters/designation/:code</code></p>
 <p><strong>Description:</strong> Updates an existing designation's name and short name. It verifies that the target exists and that the new name does not conflict with another designation.</p>
 
@@ -306,7 +308,7 @@ WHERE "c_code" = $4;  -- $4: Target code to modify (e.g. 'DES001')</pre>
 
 ---
 
-<h2>1.5 Delete Designation (Soft Delete)</h2>
+<h3>1.1.5 Delete Designation (Soft Delete)</h3>
 <p><span class="badge badge-delete">DELETE</span> <code>/api/masters/designation/:code</code></p>
 <p><strong>Description:</strong> Soft-deletes a designation, removing it from active lists while preserving historical data integrity.</p>
 
@@ -324,9 +326,9 @@ WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DES001')</pre>
     This hides the designation from active lookup lists while retaining the record for referential integrity (e.g., in case historical sales or employee files link to this role code). We also log the modification time and the admin who performed the deletion.
 </div>
 
-<hr />
 
-<h1>🏢 Part 2: Department Master</h1>
+---
+<h2>1.2 Department Master</h3>
 <p>The Department Master manages business units. It includes validation links to the Field Staff Master (<code>Tbl_FS_Mst</code>) for travel and material desk incharge roles.</p>
 
 <table style="width:100%">
@@ -360,7 +362,7 @@ WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DES001')</pre>
 
 ---
 
-<h2>2.1 Get Next Department Code</h2>
+<h3>1.2.1 Get Next Department Code</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/department/next-code</code></p>
 <p><strong>Description:</strong> Auto-calculates the next department code in the sequence (e.g. `DP0041` ➔ `DP0042`).</p>
 
@@ -379,7 +381,7 @@ LIMIT 1;</pre>
 
 ---
 
-<h2>2.2 Create Department</h2>
+<h3>1.2.2 Create Department</h3>
 <p><span class="badge badge-post">POST</span> <code>/api/masters/department</code></p>
 <p><strong>Description:</strong> Creates a new department. It validates locations (must be Mumbai or Hyderabad) and ensures assigned incharges exist in the employee table.</p>
 
@@ -443,7 +445,7 @@ VALUES (
 
 ---
 
-<h2>2.3 Get All / Search Departments</h2>
+<h3>1.2.3 Get All / Search Departments</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/department</code></p>
 <p><strong>Description:</strong> Retrieves a paginated list of departments. It supports wildcard searches (`*`) and partial matches on names or codes.</p>
 
@@ -476,7 +478,7 @@ OFFSET $4;  -- $4: Pagination skip offset (e.g. 0)</pre>
 
 ---
 
-<h2>2.4 Update Department</h2>
+<h3>1.2.4 Update Department</h3>
 <p><span class="badge badge-put">PUT</span> <code>/api/masters/department/:code</code></p>
 <p><strong>Description:</strong> Updates an existing department. It verifies that the record exists, checks for name conflicts, and validates incharge employee codes.</p>
 
@@ -537,7 +539,7 @@ WHERE "C_Code" = $9;    -- $9: Target department code to modify (e.g. 'DP0001')<
 
 ---
 
-<h2>2.5 Delete Department (Soft Delete)</h2>
+<h3>1.2.5 Delete Department (Soft Delete)</h3>
 <p><span class="badge badge-delete">DELETE</span> <code>/api/masters/department/:code</code></p>
 <p><strong>Description:</strong> Soft-deletes the department by updating its deletion status flag.</p>
 
@@ -554,9 +556,234 @@ WHERE "C_Code" = $2;  -- $2: Target department code to soft delete (e.g. 'DP0001
     Performs a soft delete by setting the <code>N_deleted</code> flag to <code>1</code>. This hides the department from active lists while preserving historical associations.
 </div>
 
+
+---
+<h2>1.3 Employee Master</h2>
+<p>The Employee Master manages detailed records for personnel, including demographic info, contacts, addresses, banking details, and role classifications.</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Emp_Mst</code></td>
+        <td>
+            <code>C_EmpCode</code> VARCHAR(10) Primary Key<br />
+            <code>C_NAMEPREFIX</code> VARCHAR(6) Not Null (Title, e.g., Mr., Ms.)<br />
+            <code>C_Name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>C_SEX</code> VARCHAR(3) Not Null (Sex/Gender)<br />
+            <code>C_Desig</code> VARCHAR(20) Not Null FK → <code>tbl_desig_mst.c_code</code><br />
+            <code>C_DEPT_CODE</code> VARCHAR(10) Not Null FK → <code>tbl_department_mst.C_Code</code><br />
+            <code>C_LOC_CODE</code> VARCHAR(10) Not Null (Location)<br />
+            <code>C_ROLE</code> VARCHAR(10) Not Null (Selected roles, e.g., 'HR Admin')<br />
+            <code>c_emp_type</code> INTEGER Not Null (1 = Permanent, 2 = Contract)<br />
+            <code>N_Deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)<br />
+            <em>Numerous optional fields for contact details, dates, addresses (HQ, Personal, Mailing), banking, tax, and insurance.</em>
+        </td>
+        <td>
+            * Unique employee names and codes<br />
+            * Alphanumeric code sequence suggests next code dynamically<br />
+            * FK integrity check for Designation, Department, and Parent (Reporting Manager)<br />
+            * Soft delete via <code>N_Deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h3>1.3.1 Get Next Employee Code</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/employee/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next suggested employee code in the sequence (e.g., if highest code is <code>100001</code>, suggests <code>100002</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT TRIM("C_EmpCode") AS "c_code" 
+FROM "Tbl_Emp_Mst"
+WHERE TRIM("C_EmpCode") ~ '^[0-9]+$'
+ORDER BY CAST(TRIM("C_EmpCode") AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query retrieves the highest strictly numeric employee code currently in the system:
+    <ol>
+        <li>We filter employee codes using regex (<code>~ '^[0-9]+$'</code>) to match only purely numeric sequences.</li>
+        <li>We cast the matched codes to integers (<code>CAST(... AS INTEGER)</code>) to ensure proper numerical sorting rather than alphabetical.</li>
+        <li>We sort descending and take the top record (<code>LIMIT 1</code>). The server increments this number by 1. If no numeric codes are found, the system defaults to starting at <code>100001</code>.</li>
+    </ol>
+</div>
+
+---
+
+<h3>1.3.2 Create Employee</h3>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/employee</code></p>
+<p><strong>Description:</strong> Creates a new employee record. Enforces name and code uniqueness, checks foreign keys for designation and department, and verifies the reporting manager (if provided).</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Unique Code Check</h4>
+<pre>SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE "C_EmpCode" = $1 AND "N_Deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Checks if the proposed new Employee Code already exists among active employees to prevent duplicate primary keys.
+</div>
+
+<h4>Query 2: Case-Insensitive Unique Name Check</h4>
+<pre>SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "N_Deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Prevents creating two employee records with the same name (case-insensitive) under active status.
+</div>
+
+<h4>Query 3: Designation FK Check</h4>
+<pre>SELECT "c_code" FROM "tbl_desig_mst" WHERE "c_code" = $1 AND "n_deleted" = 0 LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Verifies that the selected designation code is valid and active in the system.
+</div>
+
+<h4>Query 4: Department FK Check</h4>
+<pre>SELECT "C_Code" FROM "tbl_department_mst" WHERE "C_Code" = $1 AND "N_deleted" = 0 LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Verifies that the selected department code is valid and active.
+</div>
+
+<h4>Query 5: Reporting Manager FK Check (Optional)</h4>
+<pre>SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE "C_EmpCode" = $1 AND "N_Deleted" = 0 LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    If a reporting manager code is specified, this query ensures that the manager exists as an active employee.
+</div>
+
+<h4>Query 6: Insert Employee Record</h4>
+<pre>INSERT INTO "Tbl_Emp_Mst" (
+    "C_EmpCode", "C_NAMEPREFIX", "C_Name", "C_Grade", "C_Qualification",
+    "C_Add_1", "C_Add_2", "C_Add_3", "C_Add_4", "C_Pin",
+    "C_Mobile_No", "C_OFFICE_PHONE_NO", "C_OFFICE_PHONE_EXTNNO", "C_Fax", "C_Desc", "C_SEX",
+    "D_DOB", "D_DOJ", "D_CONF_DATE", "D_DOW", "C_EMAIL_OFFICE", "C_EMAIL_PERSONAL",
+    "C_Desig", "c_bankcode", "C_Accno", "N_Deleted", "d_created", "c_modifier",
+    "C_DEPT_CODE", "C_LOC_CODE", "D_RELIEVE_DATE", "C_ROLE", "C_JobDesc",
+    "C_Hq_Address", "C_PAdd_1", "C_PAdd_2", "C_PAdd_3", "C_PAdd_4",
+    "C_MAdd_1", "C_MAdd_2", "C_MAdd_3", "C_MAdd_4",
+    "c_branch_name", "c_rtgs_neft", "c_hq_pin", "c_padd_pin", "c_madd_pin",
+    "c_emp_type", "c_pan", "c_auto_report_email", "Aadhar_No", "C_ADHAR_NO",
+    "C_ESI_NO", "C_EMERGENCYMOBILE_NO", "C_CONTACTNAME", "C_Parent"
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+    $17, $18, $19, $20, $21, $22, $23, $24, $25, 0, NOW(), $26,
+    $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
+    $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54
+);</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Inserts a complete employee profile into the database. It populates identification keys, address matrices (copying HQ inputs to legacy `C_Add_1`..`4` and `C_Pin` fields), phone numbers, email records, and audit trackers. It sets the active status (<code>N_Deleted = 0</code>) and registers the creation timestamp.
+</div>
+
+---
+
+<h3>1.3.3 Get All / Search Employees</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/employee</code></p>
+<p><strong>Description:</strong> Returns a paginated list of employees. Supports wildcard searches on Name (<code>search</code>/<code>name</code>) and Code (<code>code</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT e."C_EmpCode" as c_emp_code, e."C_NAMEPREFIX" as c_name_prefix, e."C_Name" as c_name,
+       e."C_Grade" as c_grade, e."C_Qualification" as c_qualification, e."C_SEX" as c_sex,
+       e."C_Mobile_No" as c_mobile_no, e."C_OFFICE_PHONE_NO" as c_office_phone_no,
+       e."C_Desig" as c_desig, d."c_name" as c_desig_name,
+       e."C_DEPT_CODE" as c_dept_code, dept."c_name" as c_dept_name,
+       e."C_LOC_CODE" as c_loc_code, e."C_ROLE" as c_role, e."c_emp_type",
+       e."d_created", COUNT(*) OVER() as total_count
+FROM "Tbl_Emp_Mst" e
+LEFT JOIN "tbl_desig_mst" d ON e."C_Desig" = d."c_code"
+LEFT JOIN "tbl_department_mst" dept ON e."C_DEPT_CODE" = dept."C_Code"
+WHERE e."N_Deleted" = 0
+  AND LOWER(e."C_Name") LIKE LOWER($1)
+  AND LOWER(e."C_EmpCode") LIKE LOWER($2)
+ORDER BY e."C_EmpCode" 
+LIMIT $3 OFFSET $4;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Retrieves active employee details along with their joined designation and department descriptions.
+    It supports case-insensitive wildcard searches (mapping `*` to `%` matching patterns), sorts alphabetically/numerically by employee code, and returns the total matching count via window function for paginated rendering.
+</div>
+
+---
+
+<h3>1.3.4 Update Employee</h3>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/employee/:code</code></p>
+<p><strong>Description:</strong> Updates an existing employee's details (excluding code). Validates existence, ensures name uniqueness against other records, and verifies designation/department foreign keys.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Existence Check</h4>
+<pre>SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE "C_EmpCode" = $1 AND "N_Deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Verifies that the target employee profile exists and is active before modifications.
+</div>
+
+<h4>Query 2: Uniqueness Check (Excluding Self)</h4>
+<pre>SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "N_Deleted" = 0 AND "C_EmpCode" != $2;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Prevents renaming an employee to match another active employee's name.
+</div>
+
+<h4>Query 3: Update Employee Profile</h4>
+<pre>UPDATE "Tbl_Emp_Mst"
+SET "C_NAMEPREFIX" = $1, "C_Name" = $2, "C_Grade" = $3, "C_Qualification" = $4,
+    "C_Add_1" = $5, "C_Add_2" = $6, "C_Add_3" = $7, "C_Add_4" = $8, "C_Pin" = $9,
+    "C_Mobile_No" = $10, "C_OFFICE_PHONE_NO" = $11, "C_OFFICE_PHONE_EXTNNO" = $12, "C_Fax" = $13, "C_Desc" = $14, "C_SEX" = $15,
+    "D_DOB" = $16, "D_DOJ" = $17, "D_CONF_DATE" = $18, "D_DOW" = $19, "C_EMAIL_OFFICE" = $20, "C_EMAIL_PERSONAL" = $21,
+    "C_Desig" = $22, "c_bankcode" = $23, "C_Accno" = $24, "d_modified" = NOW(), "c_modifier" = $25,
+    "C_DEPT_CODE" = $26, "C_LOC_CODE" = $27, "D_RELIEVE_DATE" = $28, "C_ROLE" = $29, "C_JobDesc" = $30,
+    "C_Hq_Address" = $31, "C_PAdd_1" = $32, "C_PAdd_2" = $33, "C_PAdd_3" = $34, "C_PAdd_4" = $35,
+    "C_MAdd_1" = $36, "C_MAdd_2" = $37, "C_MAdd_3" = $38, "C_MAdd_4" = $39,
+    "c_branch_name" = $40, "c_rtgs_neft" = $41, "c_hq_pin" = $42, "c_padd_pin" = $43, "c_madd_pin" = $44,
+    "c_emp_type" = $45, "c_pan" = $46, "c_auto_report_email" = $47, "Aadhar_No" = $48, "C_ADHAR_NO" = $49,
+    "C_ESI_NO" = $50, "C_EMERGENCYMOBILE_NO" = $51, "C_CONTACTNAME" = $52, "C_Parent" = $53
+WHERE "C_EmpCode" = $54;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Applies the updated details to the target employee record, updating <code>d_modified</code> and logging the administrator who updated it.
+</div>
+
+---
+
+<h3>1.3.5 Delete Employee (Soft Delete)</h3>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/employee/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes an employee record, setting <code>N_Deleted = 1</code> to retain referential integrity.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Emp_Mst"
+SET "N_Deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1
+WHERE "C_EmpCode" = $2;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Performs a soft delete on the employee record by changing <code>N_Deleted</code> to <code>1</code>. This makes the employee inactive and hides them from active lists without corrupting transactional logs referencing this employee.
+</div>
+
+
 <hr />
 
-<h1>🌐 Part 3: Division Master</h1>
+<h1>📦 Part 2: Product Related Masters</h1>
+<p>Manages products, lines, and distribution divisions.</p>
+<h2>2.1 Division Master</h3>
 <p>The Division Master manages division information. It uses a structured alphanumeric code system (e.g. <code>DI0001</code>, <code>DI0002</code>).</p>
 
 <table style="width:100%">
@@ -585,7 +812,7 @@ WHERE "C_Code" = $2;  -- $2: Target department code to soft delete (e.g. 'DP0001
 
 ---
 
-<h2>3.1 Get Next Division Code</h2>
+<h3>2.1.1 Get Next Division Code</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/division/next-code</code></p>
 <p><strong>Description:</strong> Auto-calculates the next division code in the sequence (e.g. if the highest code is <code>DI0001</code>, it suggests <code>DI0002</code>).</p>
 
@@ -609,7 +836,7 @@ LIMIT 1;</pre>
 
 ---
 
-<h2>3.2 Create Division</h2>
+<h3>2.1.2 Create Division</h3>
 <p><span class="badge badge-post">POST</span> <code>/api/masters/division</code></p>
 <p><strong>Description:</strong> Creates a new division. It enforces case-insensitive name uniqueness among active divisions.</p>
 
@@ -654,7 +881,7 @@ VALUES (
 
 ---
 
-<h2>3.3 Get All / Search Divisions</h2>
+<h3>2.1.3 Get All / Search Divisions</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/division</code></p>
 <p><strong>Description:</strong> Retrieves a paginated, searchable list of divisions. It supports wildcard searches (`*` is translated to database `%`).</p>
 
@@ -686,7 +913,7 @@ OFFSET $4;</pre>
 
 ---
 
-<h2>3.4 Update Division</h2>
+<h3>2.1.4 Update Division</h3>
 <p><span class="badge badge-put">PUT</span> <code>/api/masters/division/:code</code></p>
 <p><strong>Description:</strong> Updates an existing division's name and short name. It verifies that the target exists and that the new name does not conflict with another division.</p>
 
@@ -731,7 +958,7 @@ WHERE "c_code" = $4;  -- $4: Target code to modify (e.g. 'DI0001')</pre>
 
 ---
 
-<h2>3.5 Delete Division (Soft Delete)</h2>
+<h3>2.1.5 Delete Division (Soft Delete)</h3>
 <p><span class="badge badge-delete">DELETE</span> <code>/api/masters/division/:code</code></p>
 <p><strong>Description:</strong> Soft-deletes a division, removing it from active lists while preserving historical data integrity.</p>
 
@@ -749,9 +976,310 @@ WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DI0001')</pre>
     This hides the division from active lookup lists while retaining the record for referential integrity (e.g., in case historical sales link to this division code). We also log the modification time and the admin who performed the deletion.
 </div>
 
+
 <hr />
 
-<h1>🗺 Part 4: Sub Area Master</h1>
+<h1>🗺️ Part 3: FS Geography Masters</h1>
+<p>Manages field force geographical territories, zones, regions, areas, sub areas, and sessions configuration.</p>
+
+<h2>3.1 Zone Master</h2>
+<p>The Zone Master manages primary geographical sales zones (e.g. <code>Z00001</code>, <code>Z00002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Zone_Mst</code></td>
+        <td>
+            <code>C_Code</code> VARCHAR(10) Primary Key (sequence format: <code>Z[0-9]+</code>)<br />
+            <code>C_Name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>C_Sh_Name</code> VARCHAR(7) Nullable<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)
+        </td>
+        <td>
+            * Unique case-insensitive names<br />
+            * Alphanumeric code sequence starts at <code>Z00001</code><br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h3>3.1.1 Get Next Zone Code</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/zone/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next zone code sequence.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst"
+WHERE "C_Code" ~ '^Z[0-9]+$'
+ORDER BY CAST(SUBSTRING("C_Code" FROM 2) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+---
+
+<h3>3.1.2 Create Zone</h3>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/zone</code></p>
+<p><strong>Description:</strong> Creates a new zone. Enforces uniqueness check.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Uniqueness Check</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "n_deleted" = 0;</pre>
+<h4>Query 2: Insert Zone</h4>
+<pre>INSERT INTO "Tbl_Zone_Mst" ("C_Code", "C_Name", "C_Sh_Name", "n_deleted", "d_created", "c_modifier")
+VALUES ($1, $2, $3, 0, NOW(), $4);</pre>
+
+---
+
+<h3>3.1.3 Get All / Search Zones</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/zone</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of zones. Supports wildcard searches on code and name.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" as c_code, "C_Name" as c_name, "C_Sh_Name" as c_sh_name, "d_created", "d_modified", COUNT(*) OVER() as total_count
+FROM "Tbl_Zone_Mst"
+WHERE "n_deleted" = 0
+  AND LOWER("C_Name") LIKE LOWER($1)
+  AND LOWER("C_Code") LIKE LOWER($2)
+ORDER BY "C_Code"
+LIMIT $3 OFFSET $4;</pre>
+
+---
+
+<h3>3.1.4 Update Zone</h3>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/zone/:code</code></p>
+<p><strong>Description:</strong> Updates an existing zone's name and short name. Enforces uniqueness excluding self.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Exists Check</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0;</pre>
+<h4>Query 2: Duplicate check excluding self</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "n_deleted" = 0 AND "C_Code" != $2;</pre>
+<h4>Query 3: Update Zone fields</h4>
+<pre>UPDATE "Tbl_Zone_Mst" SET "C_Name" = $1, "C_Sh_Name" = $2, "d_modified" = NOW(), "c_modifier" = $3 WHERE "C_Code" = $4;</pre>
+
+---
+
+<h3>3.1.5 Delete Zone (Soft Delete)</h3>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/zone/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a zone record by setting <code>n_deleted = 1</code>.</p>
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Zone_Mst" SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1 WHERE "C_Code" = $2;</pre>
+
+
+---
+
+<h2>3.2 Region Master</h2>
+<p>The Region Master manages geographical sales regions. Each region belongs to a specific Zone (e.g. <code>R0001</code>, <code>R0002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Region_Mst</code></td>
+        <td>
+            <code>C_Code</code> VARCHAR(10) Primary Key (sequence format: <code>R[0-9]+</code>)<br />
+            <code>C_Name</code> VARCHAR(50) Not Null (Unique in same Zone)<br />
+            <code>C_Sh_Name</code> VARCHAR(7) Nullable<br />
+            <code>C_Zone_Code</code> VARCHAR(10) Not Null FK → <code>Tbl_Zone_Mst.C_Code</code><br />
+            <code>n_lami</code> DOUBLE PRECISION Nullable (Latitude)<br />
+            <code>n_lgmi</code> DOUBLE PRECISION Nullable (Longitude)<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)
+        </td>
+        <td>
+            * Unique region name per Zone<br />
+            * Alphanumeric code increments starting at <code>R0001</code><br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h3>3.2.1 Get Next Region Code</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/region/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next region code sequence.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst"
+WHERE "C_Code" ~ '^R[0-9]+$'
+ORDER BY CAST(SUBSTRING("C_Code" FROM 2) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+---
+
+<h3>3.2.2 Create Region</h3>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/region</code></p>
+<p><strong>Description:</strong> Creates a new region. Enforces Zone validation and name uniqueness within that Zone.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Validate Zone Exists</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0 LIMIT 1;</pre>
+<h4>Query 2: Uniqueness Check in same Zone</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "C_Zone_Code" = $2 AND "n_deleted" = 0;</pre>
+<h4>Query 3: Insert Region</h4>
+<pre>INSERT INTO "Tbl_Region_Mst" ("C_Code", "C_Name", "C_Sh_Name", "C_Zone_Code", "n_lami", "n_lgmi", "n_deleted", "d_created", "c_modifier")
+VALUES ($1, $2, $3, $4, $5, $6, 0, NOW(), $7);</pre>
+
+---
+
+<h3>3.2.3 Get All / Search Regions</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/region</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of regions. Supports searching by region name, code, or zone name/code.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT r."C_Code" as c_code, r."C_Name" as c_name, r."C_Sh_Name" as c_sh_name, 
+       r."C_Zone_Code" as c_zone_code, z."C_Name" as c_zone_name,
+       r."n_lami", r."n_lgmi", r."d_created", r."d_modified", COUNT(*) OVER() as total_count
+FROM "Tbl_Region_Mst" r
+LEFT JOIN "Tbl_Zone_Mst" z ON r."C_Zone_Code" = z."C_Code"
+WHERE r."n_deleted" = 0
+  AND LOWER(r."C_Name") LIKE LOWER($1)
+  AND LOWER(r."C_Code") LIKE LOWER($2)
+  AND (LOWER(r."C_Zone_Code") LIKE LOWER($3) OR LOWER(z."C_Name") LIKE LOWER($3))
+ORDER BY r."C_Code"
+LIMIT $4 OFFSET $5;</pre>
+
+---
+
+<h3>3.2.4 Update Region</h3>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/region/:code</code></p>
+<p><strong>Description:</strong> Updates an existing region. Enforces exist check, zone validation, and uniqueness excluding self.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Exists Check</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0;</pre>
+<h4>Query 2: Validate Zone</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Zone_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0 LIMIT 1;</pre>
+<h4>Query 3: Duplicate Name Check excluding self</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "C_Zone_Code" = $2 AND "n_deleted" = 0 AND "C_Code" != $3;</pre>
+<h4>Query 4: Update Queries</h4>
+<pre>UPDATE "Tbl_Region_Mst"
+SET "C_Name" = $1, "C_Sh_Name" = $2, "C_Zone_Code" = $3, "n_lami" = $4, "n_lgmi" = $5, "d_modified" = NOW(), "c_modifier" = $6
+WHERE "C_Code" = $7;</pre>
+
+---
+
+<h3>3.2.5 Delete Region (Soft Delete)</h3>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/region/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a region by setting <code>n_deleted = 1</code>.</p>
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Region_Mst" SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1 WHERE "C_Code" = $2;</pre>
+
+
+---
+
+<h2>3.3 Area Master</h2>
+<p>The Area Master manages sales areas within regions (e.g. <code>A00001</code>, <code>A00002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Area_Mst</code></td>
+        <td>
+            <code>C_Code</code> VARCHAR(10) Primary Key (sequence format: <code>A[0-9]+</code>)<br />
+            <code>C_Name</code> VARCHAR(50) Not Null (Unique in same Region)<br />
+            <code>C_Sh_Name</code> VARCHAR(7) Nullable<br />
+            <code>C_Region_Code</code> VARCHAR(10) Not Null FK → <code>Tbl_Region_Mst.C_Code</code><br />
+            <code>C_SalesHQ</code> VARCHAR(50) Nullable<br />
+            <code>c_district_code</code> VARCHAR(50) Nullable<br />
+            <code>C_Classification_Code</code> VARCHAR(10) Nullable (METRO, NON METRO, MINI METRO, OTHERS)<br />
+            <code>n_lami</code> DOUBLE PRECISION Nullable (Latitude)<br />
+            <code>n_lgmi</code> DOUBLE PRECISION Nullable (Longitude)<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)
+        </td>
+        <td>
+            * Unique area name per Region<br />
+            * Alphanumeric code sequence starts at <code>A00001</code><br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h3>3.3.1 Get Classifications</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/area/classifications</code></p>
+<p><strong>Description:</strong> Returns standard area classification options (Metro, Non Metro, etc.).</p>
+
+---
+
+<h3>3.3.2 Get Next Area Code</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/area/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next area code sequence.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" FROM "Tbl_Area_Mst"
+WHERE "C_Code" ~ '^A[0-9]+$'
+ORDER BY CAST(SUBSTRING("C_Code" FROM 2) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+---
+
+<h3>3.3.3 Create Area</h3>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/area</code></p>
+<p><strong>Description:</strong> Creates a new area. Validates Region FK, coordinates, classification, and name uniqueness within Region.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Validate Region</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0 LIMIT 1;</pre>
+<h4>Query 2: Uniqueness Check in same Region</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Area_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "C_Region_Code" = $2 AND "n_deleted" = 0;</pre>
+<h4>Query 3: Insert Area</h4>
+<pre>INSERT INTO "Tbl_Area_Mst" ("C_Code", "C_Name", "C_Sh_Name", "C_Region_Code", "C_SalesHQ", "c_district_code", "C_Classification_Code", "n_lami", "n_lgmi", "n_deleted", "d_created", "c_modifier")
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, NOW(), $10);</pre>
+
+---
+
+<h3>3.3.4 Get All / Search Areas</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/area</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of areas. Supports searching by area name, code, or region name/code.</p>
+<h3>Database Queries Executed:</h3>
+<pre>SELECT a."C_Code" as c_code, a."C_Name" as c_name, a."C_Sh_Name" as c_sh_name, 
+       a."C_Region_Code" as c_region_code, r."C_Name" as c_region_name,
+       a."C_SalesHQ" as c_sales_hq, a."c_district_code" as c_district_code,
+       a."C_Classification_Code" as c_classification_code,
+       a."n_lami", a."n_lgmi", a."d_created", a."d_modified", COUNT(*) OVER() as total_count
+FROM "Tbl_Area_Mst" a
+LEFT JOIN "Tbl_Region_Mst" r ON a."C_Region_Code" = r."C_Code"
+WHERE a."n_deleted" = 0
+  AND LOWER(a."C_Name") LIKE LOWER($1)
+  AND LOWER(a."C_Code") LIKE LOWER($2)
+  AND (LOWER(a."C_Region_Code") LIKE LOWER($3) OR LOWER(r."C_Name") LIKE LOWER($3))
+ORDER BY a."C_Code"
+LIMIT $4 OFFSET $5;</pre>
+
+---
+
+<h3>3.3.5 Update Area</h3>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/area/:code</code></p>
+<p><strong>Description:</strong> Updates an existing area. Enforces exists checks, Region FK validations, and uniqueness excluding self.</p>
+<h3>Database Queries Executed:</h3>
+<h4>Query 1: Exists Check</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Area_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0;</pre>
+<h4>Query 2: Validate Region</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Region_Mst" WHERE "C_Code" = $1 AND "n_deleted" = 0 LIMIT 1;</pre>
+<h4>Query 3: Duplicate Name Check excluding self</h4>
+<pre>SELECT "C_Code" FROM "Tbl_Area_Mst" WHERE LOWER("C_Name") = LOWER($1) AND "C_Region_Code" = $2 AND "n_deleted" = 0 AND "C_Code" != $3;</pre>
+<h4>Query 4: Update Area parameters</h4>
+<pre>UPDATE "Tbl_Area_Mst"
+SET "C_Name" = $1, "C_Sh_Name" = $2, "C_Region_Code" = $3, "C_SalesHQ" = $4, "c_district_code" = $5, "C_Classification_Code" = $6, "n_lami" = $7, "n_lgmi" = $8, "d_modified" = NOW(), "c_modifier" = $9
+WHERE "C_Code" = $10;</pre>
+
+---
+
+<h3>3.3.6 Delete Area (Soft Delete)</h3>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/area/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes an area by setting <code>n_deleted = 1</code>.</p>
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Area_Mst" SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1 WHERE "C_Code" = $2;</pre>
+
+
+---
+<h2>3.4 Sub Area Master</h3>
 <p>The Sub Area Master manages sub-locality or sector information within areas. It uses a structured alphanumeric code system (e.g. <code>SA0001</code>, <code>SA0002</code>).</p>
 
 <table style="width:100%">
@@ -785,7 +1313,7 @@ WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DI0001')</pre>
 
 ---
 
-<h2>4.1 Get Next Sub Area Code</h2>
+<h3>3.4.1 Get Next Sub Area Code</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/sub-area/next-code</code></p>
 <p><strong>Description:</strong> Auto-calculates the next sub area code in the sequence (e.g. if the highest code is <code>SA0041</code>, it suggests <code>SA0042</code>).</p>
 
@@ -808,7 +1336,7 @@ LIMIT 1;</pre>
 
 ---
 
-<h2>4.2 Create Sub Area</h2>
+<h3>3.4.2 Create Sub Area</h3>
 <p><span class="badge badge-post">POST</span> <code>/api/masters/sub-area</code></p>
 <p><strong>Description:</strong> Creates a new sub area. Enforces name uniqueness within the same Area and validates that the parent Area exists.</p>
 
@@ -845,7 +1373,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, NOW(), $9);</pre>
 
 ---
 
-<h2>4.3 Get All / Search Sub Areas</h2>
+<h3>3.4.3 Get All / Search Sub Areas</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/sub-area</code></p>
 <p><strong>Description:</strong> Retrieves a paginated list of sub areas. Supports wildcards and filtering by sub_area_name, code, and area_name.</p>
 
@@ -866,7 +1394,7 @@ LIMIT $4 OFFSET $5;</pre>
 
 ---
 
-<h2>4.4 Update Sub Area</h2>
+<h3>3.4.4 Update Sub Area</h3>
 <p><span class="badge badge-put">PUT</span> <code>/api/masters/sub-area/:code</code></p>
 <p><strong>Description:</strong> Updates an existing sub area. Validates exists, parent Area, and name duplicate exclusion.</p>
 
@@ -886,7 +1414,7 @@ WHERE "C_Code" = $9;</pre>
 
 ---
 
-<h2>4.5 Delete Sub Area (Soft Delete)</h2>
+<h3>3.4.5 Delete Sub Area (Soft Delete)</h3>
 <p><span class="badge badge-delete">DELETE</span> <code>/api/masters/sub-area/:code</code></p>
 <p><strong>Description:</strong> Soft-deletes a sub area by setting `n_deleted = 1`.</p>
 
@@ -898,9 +1426,9 @@ SET
   "c_modifier" = $1
 WHERE "C_Code" = $2;</pre>
 
-<hr />
 
-<h1>💼 Part 5: Work Type Master</h1>
+---
+<h2>3.5 Work Type Master</h3>
 <p>The Work Type Master manages work activities or session configurations. It requires manual unique code input (e.g. <code>W0001</code>, <code>W0002</code>).</p>
 
 <table style="width:100%">
@@ -936,9 +1464,34 @@ WHERE "C_Code" = $2;</pre>
     </tr>
 </table>
 
+
 ---
 
-<h2>5.1 Create Work Type</h2>
+<h3>3.5.1 Get Next Work Type Code</h3>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/work-type/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next work type code in the sequence (e.g. if the highest code is <code>WT001</code>, it suggests <code>WT002</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT TRIM("c_code") AS "c_code" 
+FROM "Tbl_WorkType"
+WHERE TRIM("c_code") ~ '^WT[0-9]+$'
+ORDER BY CAST(SUBSTRING(TRIM("c_code") FROM 3) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query calculates the next numeric code in the database.
+    <ol>
+        <li>We trim the <code>c_code</code> column to ignore trailing spaces caused by the fixed-width <code>character(10)</code> datatype padding.</li>
+        <li>We filter for codes starting with "WT" and ending in digits using regex match.</li>
+        <li>We strip the "WT" prefix using <code>SUBSTRING(TRIM("c_code") FROM 3)</code>.</li>
+        <li>We cast the result to an integer and sort descending to find the highest number in the system, which is then incremented by 1 and padded to three digits.</li>
+    </ol>
+</div>
+
+---
+
+<h3>3.5.2 Create Work Type</h3>
 <p><span class="badge badge-post">POST</span> <code>/api/masters/work-type</code></p>
 <p><strong>Description:</strong> Creates a new work type. Enforces uppercase code uniqueness, case-insensitive name uniqueness, and validation for all mandatory flags.</p>
 
@@ -978,7 +1531,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, NOW(), $13);</pre>
 
 ---
 
-<h2>5.2 Get All / Search Work Types</h2>
+<h3>3.5.3 Get All / Search Work Types</h3>
 <p><span class="badge badge-get">GET</span> <code>/api/masters/work-type</code></p>
 <p><strong>Description:</strong> Retrieves a paginated list of work types. Supports wildcard searches on code and name query parameters (when * is provided, matches all).</p>
 
@@ -995,7 +1548,7 @@ LIMIT $3 OFFSET $4;</pre>
 
 ---
 
-<h2>5.3 Update Work Type</h2>
+<h3>3.5.4 Update Work Type</h3>
 <p><span class="badge badge-put">PUT</span> <code>/api/masters/work-type/:code</code></p>
 <p><strong>Description:</strong> Updates an existing work type. Validates existence, name duplication (excluding self), and all mandatory flags.</p>
 
@@ -1034,7 +1587,7 @@ WHERE "c_code" = $13;</pre>
 
 ---
 
-<h2>5.4 Delete Work Type (Soft Delete)</h2>
+<h3>3.5.5 Delete Work Type (Soft Delete)</h3>
 <p><span class="badge badge-delete">DELETE</span> <code>/api/masters/work-type/:code</code></p>
 <p><strong>Description:</strong> Soft-deletes a work type record by setting `n_deleted = 1`.</p>
 
@@ -1046,5 +1599,3 @@ SET
   "c_modifier" = $1
 WHERE "c_code" = $2;</pre>
 
-</body>
-</html>

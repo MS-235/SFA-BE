@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../../config/db');
 
 // ─────────────────────────────────────────────────────────────
 // TABLE: Tbl_WorkType
@@ -19,6 +19,22 @@ const pool = require('../config/db');
 //   d_modified         TIMESTAMP
 //   c_modifier         VARCHAR(10)     — last modified by (c_user_id)
 // ─────────────────────────────────────────────────────────────
+
+// ── Helper: generate next WT code ───────────────────────────
+async function generateNextCode() {
+    const result = await pool.query(`
+        SELECT TRIM("c_code") AS "c_code" FROM "Tbl_WorkType"
+        WHERE TRIM("c_code") ~ '^WT[0-9]+$'
+        ORDER BY CAST(SUBSTRING(TRIM("c_code") FROM 3) AS INTEGER) DESC
+        LIMIT 1
+    `);
+
+    if (result.rows.length === 0) return 'WT001';
+
+    const lastNum = parseInt(result.rows[0].c_code.replace('WT', ''), 10);
+    const nextNum = lastNum + 1;
+    return 'WT' + String(nextNum).padStart(3, '0');
+}
 
 // ─── VALIDATION HELPER ─────────────────────────────────────────
 function validateWorkTypeBody(body, isUpdate = false) {
@@ -400,4 +416,19 @@ async function remove(req, res) {
     }
 }
 
-module.exports = { create, getAll, update, remove };
+// ─── GET NEXT CODE ────────────────────────────────────────────
+// GET /api/masters/work-type/next-code
+async function getNextCode(req, res) {
+    try {
+        const nextCode = await generateNextCode();
+        return res.status(200).json({
+            success: true,
+            nextCode
+        });
+    } catch (err) {
+        console.error('Work Type getNextCode error:', err.message);
+        return res.status(500).json({ success: false, message: 'Server error.' });
+    }
+}
+
+module.exports = { create, getAll, update, remove, getNextCode };

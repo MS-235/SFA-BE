@@ -1,19 +1,20 @@
-const pool = require('../config/db');
+const pool = require('../../config/db');
 
 // ─────────────────────────────────────────────────────────────
-// TABLE: Tbl_Sub_Area_Mst
-//   C_Code                 VARCHAR(10) PK  — auto-generated: SA0001, SA0002...
+// TABLE: Tbl_Area_Mst
+//   C_Code                 VARCHAR(10) PK  — auto-generated: A00001, A00002...
 //   C_Name                 VARCHAR(50)     — Name (required)
 //   C_Sh_Name              VARCHAR(7)      — Short Name (optional)
-//   C_Area_Code            VARCHAR(10)     — FK → Tbl_Area_Mst (required)
-//   N_HQ_Flag              NUMERIC         — 0 = No, 1 = Yes (optional, Same HQ)
+//   C_Region_Code          VARCHAR(10)     — FK → Tbl_Region_Mst (required)
+//   C_SalesHQ              VARCHAR(50)     — Sale HQ (optional)
 //   n_deleted              SMALLINT        — 0 = active, 1 = deleted
 //   d_created              TIMESTAMP
 //   d_modified             TIMESTAMP
 //   c_modifier             VARCHAR(10)     — last modified by (c_user_id)
-//   n_lami                 VARCHAR(100)    — LAT (optional)
-//   n_lgmi                 VARCHAR(100)    — Long (optional)
-//   C_Classification_Code  VARCHAR(20)     — Classification (optional)
+//   n_lami                 DOUBLE PRECISION — LAT (numerical validation, optional)
+//   n_lgmi                 DOUBLE PRECISION — Long (numerical validation, optional)
+//   c_district_code        VARCHAR(50)     — District (optional)
+//   C_Classification_Code  VARCHAR(10)     — Classification (optional, constant drop-down)
 // ─────────────────────────────────────────────────────────────
 
 const CLASSIFICATIONS = [
@@ -25,52 +26,52 @@ const CLASSIFICATIONS = [
 
 const VALID_CLASSIFICATION_VALUES = CLASSIFICATIONS.map(c => c.value);
 
-// ── Helper: generate next SA code ────────────────────────────
+// ── Helper: generate next A code ─────────────────────────────
 async function generateNextCode() {
     const result = await pool.query(`
-        SELECT "C_Code" FROM "Tbl_Sub_Area_Mst"
-        WHERE "C_Code" ~ '^SA[0-9]+$'
-        ORDER BY CAST(SUBSTRING("C_Code" FROM 3) AS INTEGER) DESC
+        SELECT "C_Code" FROM "Tbl_Area_Mst"
+        WHERE "C_Code" ~ '^A[0-9]+$'
+        ORDER BY CAST(SUBSTRING("C_Code" FROM 2) AS INTEGER) DESC
         LIMIT 1
     `);
 
-    if (result.rows.length === 0) return 'SA0001';
+    if (result.rows.length === 0) return 'A00001';
 
-    const lastNum = parseInt(result.rows[0].C_Code.replace('SA', ''), 10);
+    const lastNum = parseInt(result.rows[0].C_Code.replace('A', ''), 10);
     const nextNum = lastNum + 1;
-    return 'SA' + String(nextNum).padStart(4, '0');
+    return 'A' + String(nextNum).padStart(5, '0');
 }
 
-// ── Helper: validate Area exists and is active ────────────────
-async function validateArea(areaCode) {
-    if (!areaCode || !areaCode.trim()) {
-        throw { status: 400, message: 'Area Code (c_area_code) is required.' };
+// ── Helper: validate Region exists and is active ──────────────
+async function validateRegion(regionCode) {
+    if (!regionCode || !regionCode.trim()) {
+        throw { status: 400, message: 'Region Code (c_region_code) is required.' };
     }
     const result = await pool.query(
-        `SELECT "C_Code" FROM "Tbl_Area_Mst"
+        `SELECT "C_Code" FROM "Tbl_Region_Mst"
          WHERE "C_Code" = $1 AND "n_deleted" = 0
          LIMIT 1`,
-        [areaCode.trim().toUpperCase()]
+        [regionCode.trim().toUpperCase()]
     );
     if (result.rows.length === 0) {
-        throw { status: 400, message: `Area Code "${areaCode}" not found or is deleted.` };
+        throw { status: 400, message: `Region Code "${regionCode}" not found or is deleted.` };
     }
-    return areaCode.trim().toUpperCase();
+    return regionCode.trim().toUpperCase();
 }
 
 // ── Helper: validate coordinates ──────────────────────────────
 function validateCoordinate(val, fieldName) {
-    if (val === undefined || val === null || String(val).trim() === '') return null;
+    if (val === undefined || val === null || val === '') return null;
     const num = Number(val);
     if (isNaN(num)) {
         throw { status: 400, message: `${fieldName} must be a numerical value.` };
     }
-    return String(val).trim();
+    return num;
 }
 
 // ── Helper: validate classification ───────────────────────────
 function validateClassification(val) {
-    if (val === undefined || val === null || String(val).trim() === '') return null;
+    if (val === undefined || val === null || val === '') return null;
     const upperVal = String(val).trim().toUpperCase();
     if (!VALID_CLASSIFICATION_VALUES.includes(upperVal)) {
         throw { status: 400, message: `Invalid Classification. Allowed values: ${VALID_CLASSIFICATION_VALUES.join(', ')}` };
@@ -79,7 +80,7 @@ function validateClassification(val) {
 }
 
 // ─── GET CLASSIFICATIONS (config endpoint) ───────────────────
-// GET /api/masters/sub-area/classifications
+// GET /api/masters/area/classifications
 function getClassifications(req, res) {
     return res.status(200).json({
         success: true,
@@ -88,16 +89,17 @@ function getClassifications(req, res) {
 }
 
 // ─── CREATE ───────────────────────────────────────────────────
-// POST /api/masters/sub-area
+// POST /api/masters/area
 async function create(req, res) {
     const {
         c_name,
         c_sh_name,
-        c_area_code,
-        n_hq_flag = 0,
+        c_region_code,
+        c_sales_hq,
+        c_district_code,
+        c_classification_code,
         n_lami,
-        n_lgmi,
-        c_classification_code
+        n_lgmi
     } = req.body;
 
     if (!c_name || !c_name.trim()) {
@@ -106,13 +108,13 @@ async function create(req, res) {
 
     try {
         // Validate dependencies and inputs
-        let validatedAreaCode;
+        let validatedRegionCode;
         let lat;
         let lng;
         let classification;
 
         try {
-            validatedAreaCode = await validateArea(c_area_code);
+            validatedRegionCode = await validateRegion(c_region_code);
             lat = validateCoordinate(n_lami, 'LAT');
             lng = validateCoordinate(n_lgmi, 'Long');
             classification = validateClassification(c_classification_code);
@@ -120,70 +122,72 @@ async function create(req, res) {
             return res.status(e.status || 400).json({ success: false, message: e.message });
         }
 
-        // Check duplicate name in same Area
+        // Check duplicate name in same region
         const dup = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Sub_Area_Mst"
-             WHERE LOWER("C_Name") = LOWER($1) AND "C_Area_Code" = $2 AND "n_deleted" = 0`,
-            [c_name.trim(), validatedAreaCode]
+            `SELECT "C_Code" FROM "Tbl_Area_Mst"
+             WHERE LOWER("C_Name") = LOWER($1) AND "C_Region_Code" = $2 AND "n_deleted" = 0`,
+            [c_name.trim(), validatedRegionCode]
         );
         if (dup.rows.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: `Sub Area "${c_name}" already exists in this Area.`
+                message: `Area "${c_name}" already exists in this Region.`
             });
         }
 
         const c_code = await generateNextCode();
 
         await pool.query(
-            `INSERT INTO "Tbl_Sub_Area_Mst"
-               ("C_Code", "C_Name", "C_Sh_Name", "C_Area_Code", "N_HQ_Flag", "n_lami", "n_lgmi", "C_Classification_Code", "n_deleted", "d_created", "c_modifier")
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, NOW(), $9)`,
+            `INSERT INTO "Tbl_Area_Mst"
+               ("C_Code", "C_Name", "C_Sh_Name", "C_Region_Code", "C_SalesHQ", "c_district_code", "C_Classification_Code", "n_lami", "n_lgmi", "n_deleted", "d_created", "c_modifier")
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, NOW(), $10)`,
             [
                 c_code,
                 c_name.trim(),
                 c_sh_name ? c_sh_name.trim() : null,
-                validatedAreaCode,
-                Number(n_hq_flag) === 1 ? 1 : 0,
+                validatedRegionCode,
+                c_sales_hq ? c_sales_hq.trim() : null,
+                c_district_code ? c_district_code.trim() : null,
+                classification,
                 lat,
                 lng,
-                classification,
                 req.admin.c_user_id
             ]
         );
 
         return res.status(201).json({
             success: true,
-            message: 'Sub Area created successfully.',
+            message: 'Area created successfully.',
             data: {
                 c_code,
                 c_name:                 c_name.trim(),
                 c_sh_name:              c_sh_name ? c_sh_name.trim() : null,
-                c_area_code:            validatedAreaCode,
-                n_hq_flag:              Number(n_hq_flag) === 1 ? 1 : 0,
+                c_region_code:          validatedRegionCode,
+                c_sales_hq:             c_sales_hq ? c_sales_hq.trim() : null,
+                c_district_code:        c_district_code ? c_district_code.trim() : null,
+                c_classification_code:  classification,
                 n_lami:                 lat,
-                n_lgmi:                 lng,
-                c_classification_code:  classification
+                n_lgmi:                 lng
             }
         });
 
     } catch (err) {
-        console.error('Sub Area create error:', err.message);
+        console.error('Area create error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── GET ALL / SEARCH ─────────────────────────────────────────
-// GET /api/masters/sub-area?search=West&code=SA0001&area=A00001&page=1&limit=10
+// GET /api/masters/area?search=West&code=A00001&region=R0001&page=1&limit=10
 async function getAll(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const offset = (page - 1) * limit;
-    const search = (req.query.sub_area_name || req.query.subAreaName || req.query.search || req.query.name || '').trim();
+    const search = (req.query.search || req.query.name || '').trim();
     const code = (req.query.code || '').trim();
-    const area = (req.query.area_name || req.query.areaName || req.query.area || req.query.area_code || req.query.areaCode || '').trim();
+    const region = (req.query.region || req.query.region_code || req.query.regionCode || '').trim();
 
-    if (!search && !code && !area) {
+    if (!search && !code && !region) {
         return res.status(200).json({
             success: true,
             pagination: {
@@ -198,14 +202,14 @@ async function getAll(req, res) {
 
     try {
         let query = `
-            SELECT sa."C_Code" as c_code, sa."C_Name" as c_name, sa."C_Sh_Name" as c_sh_name, 
-                   sa."C_Area_Code" as c_area_code, a."C_Name" as c_area_name,
-                   sa."N_HQ_Flag" as n_hq_flag, sa."n_lami" as n_lami, sa."n_lgmi" as n_lgmi,
-                   sa."C_Classification_Code" as c_classification_code,
-                   sa."d_created", sa."d_modified", COUNT(*) OVER() as total_count
-            FROM "Tbl_Sub_Area_Mst" sa
-            LEFT JOIN "Tbl_Area_Mst" a ON sa."C_Area_Code" = a."C_Code"
-            WHERE sa."n_deleted" = 0
+            SELECT a."C_Code" as c_code, a."C_Name" as c_name, a."C_Sh_Name" as c_sh_name, 
+                   a."C_Region_Code" as c_region_code, r."C_Name" as c_region_name,
+                   a."C_SalesHQ" as c_sales_hq, a."c_district_code" as c_district_code,
+                   a."C_Classification_Code" as c_classification_code,
+                   a."n_lami", a."n_lgmi", a."d_created", a."d_modified", COUNT(*) OVER() as total_count
+            FROM "Tbl_Area_Mst" a
+            LEFT JOIN "Tbl_Region_Mst" r ON a."C_Region_Code" = r."C_Code"
+            WHERE a."n_deleted" = 0
         `;
         const params = [];
 
@@ -217,7 +221,7 @@ async function getAll(req, res) {
                 pattern = `%${pattern}%`;
             }
             params.push(pattern);
-            query += ` AND LOWER(sa."C_Name") LIKE LOWER($${params.length})`;
+            query += ` AND LOWER(a."C_Name") LIKE LOWER($${params.length})`;
         }
 
         if (code && code !== '*') {
@@ -228,21 +232,21 @@ async function getAll(req, res) {
                 pattern = `%${pattern}%`;
             }
             params.push(pattern);
-            query += ` AND LOWER(sa."C_Code") LIKE LOWER($${params.length})`;
+            query += ` AND LOWER(a."C_Code") LIKE LOWER($${params.length})`;
         }
 
-        if (area && area !== '*') {
-            let pattern = area;
+        if (region && region !== '*') {
+            let pattern = region;
             if (pattern.includes('*')) {
                 pattern = pattern.replace(/\*/g, '%');
             } else {
                 pattern = `%${pattern}%`;
             }
             params.push(pattern);
-            query += ` AND (LOWER(sa."C_Area_Code") LIKE LOWER($${params.length}) OR LOWER(a."C_Name") LIKE LOWER($${params.length}))`;
+            query += ` AND (LOWER(a."C_Region_Code") LIKE LOWER($${params.length}) OR LOWER(r."C_Name") LIKE LOWER($${params.length}))`;
         }
 
-        query += ` ORDER BY sa."C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        query += ` ORDER BY a."C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
         params.push(limit, offset);
 
         const result = await pool.query(query, params);
@@ -252,10 +256,7 @@ async function getAll(req, res) {
 
         const data = result.rows.map(row => {
             const { total_count, ...rest } = row;
-            return {
-                ...rest,
-                n_hq_flag: Number(rest.n_hq_flag) || 0
-            };
+            return rest;
         });
 
         return res.status(200).json({
@@ -270,23 +271,24 @@ async function getAll(req, res) {
         });
 
     } catch (err) {
-        console.error('Sub Area getAll error:', err.message);
+        console.error('Area getAll error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────
-// PUT /api/masters/sub-area/:code
+// PUT /api/masters/area/:code
 async function update(req, res) {
     const { code } = req.params;
     const {
         c_name,
         c_sh_name,
-        c_area_code,
-        n_hq_flag = 0,
+        c_region_code,
+        c_sales_hq,
+        c_district_code,
+        c_classification_code,
         n_lami,
-        n_lgmi,
-        c_classification_code
+        n_lgmi
     } = req.body;
 
     if (!c_name || !c_name.trim()) {
@@ -296,22 +298,22 @@ async function update(req, res) {
     try {
         // Check exists
         const exists = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Sub_Area_Mst"
+            `SELECT "C_Code" FROM "Tbl_Area_Mst"
              WHERE "C_Code" = $1 AND "n_deleted" = 0`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Sub Area "${code}" not found.` });
+            return res.status(404).json({ success: false, message: `Area "${code}" not found.` });
         }
 
         // Validate dependencies and inputs
-        let validatedAreaCode;
+        let validatedRegionCode;
         let lat;
         let lng;
         let classification;
 
         try {
-            validatedAreaCode = await validateArea(c_area_code);
+            validatedRegionCode = await validateRegion(c_region_code);
             lat = validateCoordinate(n_lami, 'LAT');
             lng = validateCoordinate(n_lgmi, 'Long');
             classification = validateClassification(c_classification_code);
@@ -319,33 +321,35 @@ async function update(req, res) {
             return res.status(e.status || 400).json({ success: false, message: e.message });
         }
 
-        // Check duplicate name in same Area (excluding self)
+        // Check duplicate name in same region (excluding self)
         const dup = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Sub_Area_Mst"
-             WHERE LOWER("C_Name") = LOWER($1) AND "C_Area_Code" = $2 AND "n_deleted" = 0 AND "C_Code" != $3`,
-            [c_name.trim(), validatedAreaCode, code.toUpperCase()]
+            `SELECT "C_Code" FROM "Tbl_Area_Mst"
+             WHERE LOWER("C_Name") = LOWER($1) AND "C_Region_Code" = $2 AND "n_deleted" = 0 AND "C_Code" != $3`,
+            [c_name.trim(), validatedRegionCode, code.toUpperCase()]
         );
         if (dup.rows.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: `Another sub area with name "${c_name}" already exists in this Area.`
+                message: `Another area with name "${c_name}" already exists in this Region.`
             });
         }
 
         await pool.query(
-            `UPDATE "Tbl_Sub_Area_Mst"
-             SET "C_Name" = $1, "C_Sh_Name" = $2, "C_Area_Code" = $3, 
-                 "N_HQ_Flag" = $4, "n_lami" = $5, "n_lgmi" = $6, "C_Classification_Code" = $7,
-                 "d_modified" = NOW(), "c_modifier" = $8
-             WHERE "C_Code" = $9`,
+            `UPDATE "Tbl_Area_Mst"
+             SET "C_Name" = $1, "C_Sh_Name" = $2, "C_Region_Code" = $3, 
+                 "C_SalesHQ" = $4, "c_district_code" = $5, "C_Classification_Code" = $6,
+                 "n_lami" = $7, "n_lgmi" = $8,
+                 "d_modified" = NOW(), "c_modifier" = $9
+             WHERE "C_Code" = $10`,
             [
                 c_name.trim(),
                 c_sh_name ? c_sh_name.trim() : null,
-                validatedAreaCode,
-                Number(n_hq_flag) === 1 ? 1 : 0,
+                validatedRegionCode,
+                c_sales_hq ? c_sales_hq.trim() : null,
+                c_district_code ? c_district_code.trim() : null,
+                classification,
                 lat,
                 lng,
-                classification,
                 req.admin.c_user_id,
                 code.toUpperCase()
             ]
@@ -353,42 +357,43 @@ async function update(req, res) {
 
         return res.status(200).json({
             success: true,
-            message: 'Sub Area updated successfully.',
+            message: 'Area updated successfully.',
             data: {
                 c_code:                 code.toUpperCase(),
                 c_name:                 c_name.trim(),
                 c_sh_name:              c_sh_name ? c_sh_name.trim() : null,
-                c_area_code:            validatedAreaCode,
-                n_hq_flag:              Number(n_hq_flag) === 1 ? 1 : 0,
+                c_region_code:          validatedRegionCode,
+                c_sales_hq:             c_sales_hq ? c_sales_hq.trim() : null,
+                c_district_code:        c_district_code ? c_district_code.trim() : null,
+                c_classification_code:  classification,
                 n_lami:                 lat,
-                n_lgmi:                 lng,
-                c_classification_code:  classification
+                n_lgmi:                 lng
             }
         });
 
     } catch (err) {
-        console.error('Sub Area update error:', err.message);
+        console.error('Area update error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── DELETE (soft) ────────────────────────────────────────────
-// DELETE /api/masters/sub-area/:code
+// DELETE /api/masters/area/:code
 async function remove(req, res) {
     const { code } = req.params;
 
     try {
         const exists = await pool.query(
-            `SELECT "C_Code" FROM "Tbl_Sub_Area_Mst"
+            `SELECT "C_Code" FROM "Tbl_Area_Mst"
              WHERE "C_Code" = $1 AND "n_deleted" = 0`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
-            return res.status(404).json({ success: false, message: `Sub Area "${code}" not found.` });
+            return res.status(404).json({ success: false, message: `Area "${code}" not found.` });
         }
 
         await pool.query(
-            `UPDATE "Tbl_Sub_Area_Mst"
+            `UPDATE "Tbl_Area_Mst"
              SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1
              WHERE "C_Code" = $2`,
             [req.admin.c_user_id, code.toUpperCase()]
@@ -396,17 +401,17 @@ async function remove(req, res) {
 
         return res.status(200).json({
             success: true,
-            message: `Sub Area "${code}" deleted successfully.`
+            message: `Area "${code}" deleted successfully.`
         });
 
     } catch (err) {
-        console.error('Sub Area delete error:', err.message);
+        console.error('Area delete error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }
 
 // ─── GET NEXT CODE ────────────────────────────────────────────
-// GET /api/masters/sub-area/next-code
+// GET /api/masters/area/next-code
 async function getNextCode(req, res) {
     try {
         const nextCode = await generateNextCode();
@@ -415,7 +420,7 @@ async function getNextCode(req, res) {
             nextCode
         });
     } catch (err) {
-        console.error('Sub Area getNextCode error:', err.message);
+        console.error('Area getNextCode error:', err.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 }

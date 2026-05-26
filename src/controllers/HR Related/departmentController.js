@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../../config/db');
 
 // ─────────────────────────────────────────────────────────────
 // TABLE: tbl_department_mst

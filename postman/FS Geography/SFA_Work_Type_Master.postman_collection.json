@@ -234,6 +234,30 @@
           "body": "{\n  \"success\": true,\n  \"message\": \"Work Type \\\"WT001\\\" deleted successfully.\"\n}"
         }
       ]
+    },
+    {
+      "name": "8. Get Next Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/work-type/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "work-type", "next-code"]
+        },
+        "description": "Returns the next auto-generated work type code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"WT001\"\n}"
+        }
+      ]
     }
   ]
 }

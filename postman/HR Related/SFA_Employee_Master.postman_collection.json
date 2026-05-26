@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "SFA Employee Master API",
+    "_postman_id": "sfa-employee-master-collection",
+    "description": "CRUD API for Employee Master.\n\nTable: Tbl_Emp_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nDependencies:\n- Designation (c_desig) must exist in tbl_desig_mst\n- Department (c_dept_code) must exist in tbl_department_mst\n- Reporting Manager (c_parent) must exist in Tbl_Emp_Mst\n\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- emp_name=* or emp_code=* -> returns all active records.\n- emp_name=keyword or emp_code=keyword -> case-insensitive search matching name or code.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "empCode",
+      "value": "100001",
+      "type": "string",
+      "description": "Code of the employee to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "Pre-requisite Dependency Lookups (Foreign Keys)",
+      "item": [
+        {
+          "name": "Get Designations for FK Lookup",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/masters/designation?search=*&page=1&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "masters", "designation"],
+              "query": [
+                { "key": "search", "value": "*" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "100" }
+              ]
+            },
+            "description": "Helper request to retrieve active designations. Use a returned 'c_code' for the 'c_desig' parameter in employee creation/updates."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Departments for FK Lookup",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/masters/department?search=*&page=1&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "masters", "department"],
+              "query": [
+                { "key": "search", "value": "*" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "100" }
+              ]
+            },
+            "description": "Helper request to retrieve active departments. Use a returned 'C_Code' for the 'c_dept_code' parameter in employee creation/updates."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Valid Locations for Lookup",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/masters/department/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "masters", "department", "locations"]
+            },
+            "description": "Helper request to retrieve valid department and office locations. Use a returned value for the 'c_loc_code' parameter in employee creation/updates."
+          },
+          "response": []
+        }
+      ],
+      "description": "Requests to list active Designation, Department, and Location codes. Run these first to find valid reference keys for creating or updating employee files."
+    },
+    {
+      "name": "1. Get Next Code Suggestion",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.nextCode) {",
+              "  pm.collectionVariables.set('empCode', res.nextCode);",
+              "  console.log('Suggested Next Code:', res.nextCode);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee", "next-code"]
+        },
+        "description": "Retrieves the next suggested numeric employee code (incremented from highest existing numeric code)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"100001\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Create Employee",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('empCode', res.data.c_emp_code);",
+              "  console.log('✅ Created:', res.data.c_emp_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_emp_code\": \"100001\",\n  \"c_name_prefix\": \"Mr.\",\n  \"c_name\": \"Sohel Shai\",\n  \"c_sex\": \"M\",\n  \"c_desig\": \"MGR\",\n  \"c_dept_code\": \"SALES\",\n  \"c_loc_code\": \"HYD\",\n  \"c_role\": \"SFA Admin, SFA User\",\n  \"c_emp_type\": 1,\n  \"c_grade\": \"A\",\n  \"c_qualification\": \"MBA\",\n  \"c_mobile_no\": \"9876543210\",\n  \"d_dob\": \"1995-05-15\",\n  \"d_doj\": \"2020-01-10\",\n  \"c_email_personal\": \"sohel@gmail.com\",\n  \"c_email_office\": \"sohel.shai@company.com\",\n  \"c_hq_address\": \"Road No 12, Banjara Hills\",\n  \"c_hq_place\": \"Banjara Hills\",\n  \"c_hq_city\": \"Hyderabad\",\n  \"c_hq_state\": \"Telangana\",\n  \"c_hq_pin\": \"500034\",\n  \"c_padd_address\": \"Flat 202, Heights Apt\",\n  \"c_padd_place\": \"Begumpet\",\n  \"c_padd_city\": \"Hyderabad\",\n  \"c_padd_state\": \"Telangana\",\n  \"c_padd_pin\": \"500016\",\n  \"c_madd_address\": \"Flat 202, Heights Apt\",\n  \"c_madd_place\": \"Begumpet\",\n  \"c_madd_city\": \"Hyderabad\",\n  \"c_madd_state\": \"Telangana\",\n  \"c_madd_pin\": \"500016\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee"]
+        },
+        "description": "Creates a new employee record.\n\nFields:\n- c_emp_code (required): Manually specified alphanumeric code.\n- c_name_prefix (required): Title (Mr., Ms., etc.)\n- c_name (required): Unique employee name\n- c_sex (required): Sex/Gender\n- c_desig (required): Designation code (must exist in tbl_desig_mst)\n- c_dept_code (required): Department code (must exist in tbl_department_mst)\n- c_loc_code (required): Location\n- c_role (required): Role(s)\n- c_emp_type (required): 1 for Permanent, 2 for Contract"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Employee created successfully.\",\n  \"data\": {\n    \"c_emp_code\": \"100001\",\n    \"c_name\": \"Sohel Shai\"\n  }\n}"
+        },
+        {
+          "name": "Error - Missing Required Fields",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Employee Code (c_emp_code) is required. Name (c_name) is required. Title (c_name_prefix) is required. Sex (c_sex) is required. Designation (c_desig) is required. Department (c_dept_code) is required. Location (c_loc_code) is required. Role (c_role) is required. Employee Type (c_emp_type) is required.\"\n}"
+        },
+        {
+          "name": "Error - Duplicate Name/Code",
+          "status": "Conflict",
+          "code": 409,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Employee with Code \\\"100001\\\" already exists.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee"]
+        },
+        "description": "By default (empty search), returns an empty data block immediately without querying the database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Get All (emp_name=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee?emp_name=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee"],
+          "query": [
+            { "key": "emp_name", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Retrieves all active employee profiles paginated."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_emp_code\": \"100001\",\n      \"c_name_prefix\": \"Mr.\",\n      \"c_name\": \"Sohel Shai\",\n      \"c_grade\": \"A\",\n      \"c_qualification\": \"MBA\",\n      \"c_sex\": \"M\",\n      \"c_mobile_no\": \"9876543210\",\n      \"c_office_phone_no\": null,\n      \"c_desig\": \"MGR\",\n      \"c_desig_name\": \"Manager\",\n      \"c_dept_code\": \"SALES\",\n      \"c_dept_name\": \"Sales Department\",\n      \"c_loc_code\": \"HYD\",\n      \"c_role\": \"SFA Admin, SFA User\",\n      \"c_emp_type\": 1,\n      \"d_created\": \"2026-05-26T07:00:00.000Z\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Name Keyword (emp_name)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee?emp_name=Sohel&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee"],
+          "query": [
+            { "key": "emp_name", "value": "Sohel" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Filters employee profiles by name matching the specified search term."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_emp_code\": \"100001\",\n      \"c_name_prefix\": \"Mr.\",\n      \"c_name\": \"Sohel Shai\",\n      \"c_desig\": \"MGR\",\n      \"c_dept_code\": \"SALES\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Search — Code Keyword (emp_code)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee?emp_code=100001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee"],
+          "query": [
+            { "key": "emp_code", "value": "100001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Filters employee profiles by code matching the specified search term."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_emp_code\": \"100001\",\n      \"c_name_prefix\": \"Mr.\",\n      \"c_name\": \"Sohel Shai\",\n      \"c_desig\": \"MGR\",\n      \"c_dept_code\": \"SALES\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Update Employee",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name_prefix\": \"Mr.\",\n  \"c_name\": \"Sohel Shai Updated\",\n  \"c_sex\": \"M\",\n  \"c_desig\": \"MGR\",\n  \"c_dept_code\": \"SALES\",\n  \"c_loc_code\": \"HYD\",\n  \"c_role\": \"SFA Admin, OTHERS\",\n  \"c_emp_type\": 1,\n  \"c_grade\": \"A+\",\n  \"c_qualification\": \"MBA, Ph.D.\",\n  \"c_mobile_no\": \"9999999999\",\n  \"c_padd_address\": \"Updated Flat 202\",\n  \"c_padd_place\": \"Updated Begumpet\",\n  \"c_padd_city\": \"Hyderabad\",\n  \"c_padd_state\": \"Telangana\",\n  \"c_padd_pin\": \"500016\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee/{{empCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee", "{{empCode}}"]
+        },
+        "description": "Updates an existing employee profile fields.\n\nThe Code (passed as route parameter) cannot be modified."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Employee updated successfully.\",\n  \"data\": {\n    \"c_emp_code\": \"100001\",\n    \"c_name\": \"Sohel Shai Updated\"\n  }\n}"
+        },
+        {
+          "name": "Error - Employee Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Employee \\\"100001\\\" not found.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Delete Employee",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/employee/{{empCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "employee", "{{empCode}}"]
+        },
+        "description": "Soft deletes an employee record (sets N_Deleted = 1)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Employee \\\"100001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    }
+  ]
+}
