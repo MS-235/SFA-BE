@@ -23,11 +23,15 @@ async function validateEmployeeBody(body, isUpdate = false) {
     // 3. Title (C_NAMEPREFIX)
     if (!body.c_name_prefix || !body.c_name_prefix.trim()) {
         errors.push('Title (c_name_prefix) is required.');
+    } else if (body.c_name_prefix.trim().length > 6) {
+        errors.push('Title (c_name_prefix) cannot exceed 6 characters (e.g. Mr., Mrs., Dr.).');
     }
 
     // 4. Sex (C_SEX)
     if (!body.c_sex || !body.c_sex.trim()) {
         errors.push('Sex (c_sex) is required.');
+    } else if (!['M', 'F'].includes(body.c_sex.trim().toUpperCase())) {
+        errors.push('Sex (c_sex) must be M or F.');
     }
 
     // 5. Designation (C_Desig)
@@ -59,11 +63,23 @@ async function validateEmployeeBody(body, isUpdate = false) {
     // 7. Location (C_LOC_CODE)
     if (!body.c_loc_code || !body.c_loc_code.trim()) {
         errors.push('Location (c_loc_code) is required.');
+    } else if (body.c_loc_code.trim().length > 10) {
+        errors.push('Location code (c_loc_code) cannot exceed 10 characters.');
+    } else {
+        const locCheck = await pool.query(
+            `SELECT "C_Code" FROM "Tbl_Officelocation_Mst" WHERE "C_Code" = $1 AND "N_Deleted" = 0 LIMIT 1`,
+            [body.c_loc_code.trim().toUpperCase()]
+        );
+        if (locCheck.rows.length === 0) {
+            errors.push(`Location Code "${body.c_loc_code}" not found or is deleted.`);
+        }
     }
 
-    // 8. Role (C_ROLE)
+    // 8. Role (C_ROLE) — stored as a code, MAX 10 chars
     if (!body.c_role || !body.c_role.trim()) {
         errors.push('Role (c_role) is required.');
+    } else if (body.c_role.trim().length > 10) {
+        errors.push('Role (c_role) cannot exceed 10 characters. Use a code like: HRADMIN, SFAADMIN, SFAUSER, OTHER.');
     }
 
     // 9. Employee Type (c_emp_type)
@@ -105,17 +121,6 @@ async function validateEmployeeBody(body, isUpdate = false) {
             if (!emailRegex.test(body[key].trim())) {
                 errors.push(`${label} must be a valid email address.`);
             }
-        }
-    }
-
-    // 10. Reporting Manager check (C_Parent)
-    if (body.c_parent && body.c_parent.trim()) {
-        const parentCheck = await pool.query(
-            `SELECT "C_EmpCode" FROM "Tbl_Emp_Mst" WHERE "C_EmpCode" = $1 AND "N_Deleted" = 0 LIMIT 1`,
-            [body.c_parent.trim().toUpperCase()]
-        );
-        if (parentCheck.rows.length === 0) {
-            errors.push(`Reporting Manager "${body.c_parent}" not found or is deleted.`);
         }
     }
 
@@ -182,7 +187,6 @@ async function create(req, res) {
             c_esi_no = null,
             c_aadhar_no = null,
             c_emergency_mobile_no = null,
-            c_parent = null,
             // HQ Address Group
             c_hq_address = null,
             c_hq_place = null,
@@ -242,7 +246,7 @@ async function create(req, res) {
                 "C_MAdd_1", "C_MAdd_2", "C_MAdd_3", "C_MAdd_4",
                 "c_branch_name", "c_rtgs_neft", "c_hq_pin", "c_padd_pin", "c_madd_pin",
                 "c_emp_type", "c_pan", "c_auto_report_email", "Aadhar_No", "C_ADHAR_NO",
-                "C_ESI_NO", "C_EMERGENCYMOBILE_NO", "C_CONTACTNAME", "C_Parent"
+                "C_ESI_NO", "C_EMERGENCYMOBILE_NO", "C_CONTACTNAME"
              )
              VALUES (
                 $1, $2, $3, $4, $5,
@@ -255,7 +259,7 @@ async function create(req, res) {
                 $37, $38, $39, $40,
                 $41, $42, $43, $44, $45,
                 $46, $47, $48, $49, $50,
-                $51, $52, $53, $54
+                $51, $52, $53
              )`,
             [
                 cleanCode,
@@ -310,8 +314,7 @@ async function create(req, res) {
                 c_aadhar_no ? c_aadhar_no.trim() : null, // C_ADHAR_NO
                 c_esi_no ? c_esi_no.trim() : null,
                 c_emergency_mobile_no ? c_emergency_mobile_no.trim() : null,
-                c_contact_name ? c_contact_name.trim() : null,
-                c_parent ? c_parent.trim().toUpperCase() : null
+                c_contact_name ? c_contact_name.trim() : null
             ]
         );
 
@@ -469,7 +472,6 @@ async function update(req, res) {
             c_esi_no = null,
             c_aadhar_no = null,
             c_emergency_mobile_no = null,
-            c_parent = null,
             // HQ Address Group
             c_hq_address = null,
             c_hq_place = null,
@@ -526,8 +528,8 @@ async function update(req, res) {
                  "C_MAdd_1" = $36, "C_MAdd_2" = $37, "C_MAdd_3" = $38, "C_MAdd_4" = $39,
                  "c_branch_name" = $40, "c_rtgs_neft" = $41, "c_hq_pin" = $42, "c_padd_pin" = $43, "c_madd_pin" = $44,
                  "c_emp_type" = $45, "c_pan" = $46, "c_auto_report_email" = $47, "Aadhar_No" = $48, "C_ADHAR_NO" = $49,
-                 "C_ESI_NO" = $50, "C_EMERGENCYMOBILE_NO" = $51, "C_CONTACTNAME" = $52, "C_Parent" = $53
-             WHERE "C_EmpCode" = $54`,
+                 "C_ESI_NO" = $50, "C_EMERGENCYMOBILE_NO" = $51, "C_CONTACTNAME" = $52
+             WHERE "C_EmpCode" = $53`,
             [
                 c_name_prefix.trim(),
                 cleanName,
@@ -581,7 +583,6 @@ async function update(req, res) {
                 c_esi_no ? c_esi_no.trim() : null,
                 c_emergency_mobile_no ? c_emergency_mobile_no.trim() : null,
                 c_contact_name ? c_contact_name.trim() : null,
-                c_parent ? c_parent.trim().toUpperCase() : null,
                 targetCode
             ]
         );

@@ -371,7 +371,7 @@ async function update(req, res) {
     }
 }
 
-// ─── DELETE (soft) ────────────────────────────────────────────
+// ─── DELETE (hard) ────────────────────────────────────────────
 // DELETE /api/masters/department/:code
 async function remove(req, res) {
     const { code } = req.params;
@@ -379,7 +379,7 @@ async function remove(req, res) {
     try {
         const exists = await pool.query(
             `SELECT "C_Code" FROM "tbl_department_mst"
-             WHERE "C_Code" = $1 AND "N_deleted" = 0`,
+             WHERE "C_Code" = $1`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
@@ -387,10 +387,8 @@ async function remove(req, res) {
         }
 
         await pool.query(
-            `UPDATE "tbl_department_mst"
-             SET "N_deleted" = 1, "D_modified" = NOW(), "C_modifier" = $1
-             WHERE "C_Code" = $2`,
-            [req.admin.c_user_id, code.toUpperCase()]
+            `DELETE FROM "tbl_department_mst" WHERE "C_Code" = $1`,
+            [code.toUpperCase()]
         );
 
         return res.status(200).json({

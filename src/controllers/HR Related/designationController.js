@@ -216,7 +216,7 @@ async function update(req, res) {
     }
 }
 
-// ─── DELETE (soft) ────────────────────────────────────────────
+// ─── DELETE (hard) ────────────────────────────────────────────
 // DELETE /api/masters/designation/:code
 async function remove(req, res) {
     const { code } = req.params;
@@ -224,7 +224,7 @@ async function remove(req, res) {
     try {
         const exists = await pool.query(
             `SELECT "c_code" FROM "tbl_desig_mst"
-             WHERE "c_code" = $1 AND "n_deleted" = 0`,
+             WHERE "c_code" = $1`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
@@ -232,10 +232,8 @@ async function remove(req, res) {
         }
 
         await pool.query(
-            `UPDATE "tbl_desig_mst"
-             SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1
-             WHERE "c_code" = $2`,
-            [req.admin.c_user_id, code.toUpperCase()]
+            `DELETE FROM "tbl_desig_mst" WHERE "c_code" = $1`,
+            [code.toUpperCase()]
         );
 
         return res.status(200).json({
