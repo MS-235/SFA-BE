@@ -196,6 +196,35 @@
       ]
     },
     {
+      "name": "5b. Search — Zone (South)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/region?zone=South&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "region"],
+          "query": [
+            { "key": "zone", "value": "South" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search regions by Zone Name or Zone Code (e.g. 'South' or 'Z00001')."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"R0001\",\n      \"c_name\": \"South Region\",\n      \"c_sh_name\": \"SR\",\n      \"c_zone_code\": \"Z00001\",\n      \"c_zone_name\": \"South Zone\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
       "name": "6. Update Region",
       "request": {
         "method": "PUT",

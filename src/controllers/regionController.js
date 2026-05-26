@@ -129,15 +129,16 @@ async function create(req, res) {
 }
 
 // ─── GET ALL / SEARCH ─────────────────────────────────────────
-// GET /api/masters/region?search=West&code=R0001&page=1&limit=10
+// GET /api/masters/region?search=West&code=R0001&zone=Z00001&page=1&limit=10
 async function getAll(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const offset = (page - 1) * limit;
     const search = (req.query.search || req.query.name || '').trim();
     const code = (req.query.code || '').trim();
+    const zone = (req.query.zone || req.query.zone_code || req.query.zoneCode || '').trim();
 
-    if (!search && !code) {
+    if (!search && !code && !zone) {
         return res.status(200).json({
             success: true,
             pagination: {
@@ -181,6 +182,17 @@ async function getAll(req, res) {
             }
             params.push(pattern);
             query += ` AND LOWER(r."C_Code") LIKE LOWER($${params.length})`;
+        }
+
+        if (zone && zone !== '*') {
+            let pattern = zone;
+            if (pattern.includes('*')) {
+                pattern = pattern.replace(/\*/g, '%');
+            } else {
+                pattern = `%${pattern}%`;
+            }
+            params.push(pattern);
+            query += ` AND (LOWER(r."C_Zone_Code") LIKE LOWER($${params.length}) OR LOWER(z."C_Name") LIKE LOWER($${params.length}))`;
         }
 
         query += ` ORDER BY r."C_Code" LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;

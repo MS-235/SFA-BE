@@ -7,6 +7,7 @@ const division = require('../controllers/divisionController');
 const zone = require('../controllers/zoneController');
 const region = require('../controllers/regionController');
 const area = require('../controllers/areaController');
+const subArea = require('../controllers/subAreaController');
 
 
 // All master routes require a valid admin token
@@ -55,5 +56,13 @@ router.post('/area',                area.create);
 router.get('/area',                 area.getAll);
 router.put('/area/:code',           area.update);
 router.delete('/area/:code',        area.remove);
+
+// ── Sub Area Master ─────────────────────────────────────────
+router.get('/sub-area/classifications', subArea.getClassifications);
+router.get('/sub-area/next-code',       subArea.getNextCode);
+router.post('/sub-area',                subArea.create);
+router.get('/sub-area',                 subArea.getAll);
+router.put('/sub-area/:code',           subArea.update);
+router.delete('/sub-area/:code',        subArea.remove);
 
 module.exports = router;

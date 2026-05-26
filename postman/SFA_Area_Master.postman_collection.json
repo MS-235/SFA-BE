@@ -196,6 +196,35 @@
       ]
     },
     {
+      "name": "5b. Search — Region (South)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/area?region=South&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "area"],
+          "query": [
+            { "key": "region", "value": "South" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search areas by Region Name or Region Code (e.g. 'South' or 'R0001')."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"A00001\",\n      \"c_name\": \"Gachibowli Area\",\n      \"c_sh_name\": \"GBL\",\n      \"c_region_code\": \"R0001\",\n      \"c_region_name\": \"South Region\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
       "name": "6. Update Area",
       "request": {
         "method": "PUT",

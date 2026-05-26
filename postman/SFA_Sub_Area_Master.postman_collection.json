@@ -1,0 +1,316 @@
+{
+  "info": {
+    "name": "SFA Sub Area Master API",
+    "_postman_id": "sfa-sub-area-master-collection",
+    "description": "CRUD API for Sub Area Master.\n\nTable: Tbl_Sub_Area_Mst\n\nPre-requisite:\n1. Login using the Auth collection first\n2. The Login request auto-saves accessToken to collection variables\n3. All requests here use {{accessToken}} automatically\n\nCode is auto-generated with prefix SA and 4-digit padding (SA0001, SA0002...)\nSearch behavior:\n- Default (no search / empty) -> returns empty data.\n- search=* -> returns all active records.\n- search=keyword -> case-insensitive search matching name (e.g. searching 'Gachibowli' matches 'Gachibowli Sub Area').\n- area=keyword -> search by Area Name or Area Code.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Paste your accessToken here, or run Login from Auth collection first"
+    },
+    {
+      "key": "subAreaCode",
+      "value": "SA0001",
+      "type": "string",
+      "description": "Code of the sub area to update/delete"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Sub Area",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data) {",
+              "  pm.collectionVariables.set('subAreaCode', res.data.c_code);",
+              "  console.log('✅ Created Sub Area:', res.data.c_code);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Cyber Towers Sub Area\",\n  \"c_sh_name\": \"CTS\",\n  \"c_area_code\": \"A00001\",\n  \"n_hq_flag\": 1,\n  \"c_classification_code\": \"METRO\",\n  \"n_lami\": 17.4501,\n  \"n_lgmi\": 78.3808\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"]
+        },
+        "description": "Creates a new sub area.\n\nCode is auto-generated incrementally with prefix SA and 4-digit padding (SA0001, SA0002...).\nThe created code is auto-saved to {{subAreaCode}} variable.\n\nFields:\n- c_name (required): Sub Area name\n- c_area_code (required): Valid Area Code from Area Master\n- c_sh_name (optional): Short name\n- n_hq_flag (optional): Same HQ flag (0 or 1)\n- c_classification_code (optional): Must match NON METRO, METRO, MINI METRO, or OTHERS\n- n_lami (optional): Latitude\n- n_lgmi (optional): Longitude"
+      },
+      "response": [
+        {
+          "name": "Success - 201",
+          "status": "Created",
+          "code": 201,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Sub Area created successfully.\",\n  \"data\": {\n    \"c_code\": \"SA0001\",\n    \"c_name\": \"Cyber Towers Sub Area\",\n    \"c_sh_name\": \"CTS\",\n    \"c_area_code\": \"A00001\",\n    \"n_hq_flag\": 1,\n    \"c_classification_code\": \"METRO\",\n    \"n_lami\": \"17.4501\",\n    \"n_lgmi\": \"78.3808\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Get All (Default - Empty Search)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"]
+        },
+        "description": "By default (empty search term), returns empty data block without querying database."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0\n  },\n  \"data\": []\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Get All (search=*)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area?search=*&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"],
+          "query": [
+            { "key": "search", "value": "*" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Returns all active sub areas paginated, including Area Name joins."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"SA0001\",\n      \"c_name\": \"Cyber Towers Sub Area\",\n      \"c_sh_name\": \"CTS\",\n      \"c_area_code\": \"A00001\",\n      \"c_area_name\": \"Gachibowli Area\",\n      \"n_hq_flag\": 1,\n      \"c_classification_code\": \"METRO\",\n      \"n_lami\": \"17.4501\",\n      \"n_lgmi\": \"78.3808\",\n      \"d_created\": \"2026-05-26T05:00:00.000Z\",\n      \"d_modified\": null\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Search — Keyword (Cyber Towers)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area?search=Cyber Towers&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"],
+          "query": [
+            { "key": "search", "value": "Cyber Towers" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search sub areas whose name contains 'Cyber Towers'."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"SA0001\",\n      \"c_name\": \"Cyber Towers Sub Area\",\n      \"c_sh_name\": \"CTS\",\n      \"c_area_code\": \"A00001\",\n      \"c_area_name\": \"Gachibowli Area\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Search — Code digits (0001)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area?code=0001&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"],
+          "query": [
+            { "key": "code", "value": "0001" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search sub areas whose code contains '0001' (matches SA0001)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"SA0001\",\n      \"c_name\": \"Cyber Towers Sub Area\",\n      \"c_sh_name\": \"CTS\",\n      \"c_area_code\": \"A00001\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. Search — Area (Gachibowli)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area?area=Gachibowli&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area"],
+          "query": [
+            { "key": "area", "value": "Gachibowli" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        },
+        "description": "Search sub areas by Area Name or Area Code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"pagination\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 1\n  },\n  \"data\": [\n    {\n      \"c_code\": \"SA0001\",\n      \"c_name\": \"Cyber Towers Sub Area\",\n      \"c_sh_name\": \"CTS\",\n      \"c_area_code\": \"A00001\",\n      \"c_area_name\": \"Gachibowli Area\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Update Sub Area",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"c_name\": \"Updated Cyber Towers Sub Area\",\n  \"c_sh_name\": \"UCTS\",\n  \"c_area_code\": \"A00001\",\n  \"n_hq_flag\": 0,\n  \"c_classification_code\": \"NON METRO\",\n  \"n_lami\": 17.4600,\n  \"n_lgmi\": 78.3900\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area/{{subAreaCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area", "{{subAreaCode}}"]
+        },
+        "description": "Update all mutable fields of a sub area."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Sub Area updated successfully.\",\n  \"data\": {\n    \"c_code\": \"SA0001\",\n    \"c_name\": \"Updated Cyber Towers Sub Area\",\n    \"c_sh_name\": \"UCTS\",\n    \"c_area_code\": \"A00001\",\n    \"n_hq_flag\": 0,\n    \"c_classification_code\": \"NON METRO\",\n    \"n_lami\": \"17.4600\",\n    \"n_lgmi\": \"78.3900\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Delete Sub Area",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area/{{subAreaCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area", "{{subAreaCode}}"]
+        },
+        "description": "Soft deletes a sub area (sets n_deleted = 1)."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Sub Area \\\"SA0001\\\" deleted successfully.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "9. Get Next Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area", "next-code"]
+        },
+        "description": "Returns the next auto-generated sub area code."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"SA0002\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "10. Get Classifications",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/sub-area/classifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "sub-area", "classifications"]
+        },
+        "description": "Returns list of constant classifications from backend."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": [\n    { \"value\": \"NON METRO\", \"label\": \"Non Metro\" },\n    { \"value\": \"METRO\", \"label\": \"Metro\" },\n    { \"value\": \"MINI METRO\", \"label\": \"Mini Metro\" },\n    { \"value\": \"OTHERS\", \"label\": \"Others\" }\n  ]\n}"
+        }
+      ]
+    }
+  ]
+}

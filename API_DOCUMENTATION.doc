@@ -1,0 +1,902 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<title>SFA Backend Master Data API & Query Documentation</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #333333;
+        line-height: 1.6;
+        margin: 40px;
+    }
+    h1 {
+        font-family: 'Segoe UI Semibold', Arial, sans-serif;
+        color: #1a365d;
+        border-bottom: 2px solid #2b6cb0;
+        padding-bottom: 8px;
+        margin-top: 30px;
+        font-size: 20pt;
+    }
+    h2 {
+        font-family: 'Segoe UI Semibold', Arial, sans-serif;
+        color: #2b6cb0;
+        margin-top: 25px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 4px;
+        font-size: 15pt;
+    }
+    h3 {
+        font-family: 'Segoe UI Semibold', Arial, sans-serif;
+        color: #4a5568;
+        margin-top: 20px;
+        font-size: 12pt;
+    }
+    p {
+        margin-bottom: 15px;
+        font-size: 11pt;
+    }
+    .intro {
+        font-size: 11.5pt;
+        color: #4a5568;
+        background-color: #f7fafc;
+        border-left: 4px solid #4299e1;
+        padding: 15px;
+        margin-bottom: 25px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 10.5pt;
+    }
+    th {
+        background-color: #ebf8ff;
+        color: #2b6cb0;
+        text-align: left;
+        padding: 10px;
+        border: 1px solid #cbd5e0;
+        font-weight: bold;
+    }
+    td {
+        padding: 10px;
+        border: 1px solid #cbd5e0;
+        vertical-align: top;
+    }
+    tr:nth-child(even) td {
+        background-color: #f7fafc;
+    }
+    code {
+        font-family: 'Consolas', 'Courier New', monospace;
+        background-color: #f7fafc;
+        color: #e53e3e;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 9.5pt;
+    }
+    pre {
+        font-family: 'Consolas', 'Courier New', monospace;
+        background-color: #1a202c;
+        color: #f7fafc;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 15px 0;
+        font-size: 10pt;
+        border-left: 4px solid #3182ce;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .explanation-box {
+        background-color: #fffaf0;
+        border-left: 4px solid #dd6b20;
+        padding: 12px 18px;
+        margin: 15px 0 25px 0;
+        font-size: 10.5pt;
+        color: #7b341e;
+    }
+    .explanation-title {
+        font-weight: bold;
+        color: #dd6b20;
+        margin-bottom: 5px;
+    }
+    ul, ol {
+        margin-bottom: 15px;
+        padding-left: 25px;
+        font-size: 11pt;
+    }
+    li {
+        margin-bottom: 5px;
+    }
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        font-size: 8.5pt;
+        font-weight: bold;
+        color: white;
+        border-radius: 3px;
+        text-transform: uppercase;
+    }
+    .badge-post { background-color: #3182ce; }
+    .badge-get { background-color: #38a169; }
+    .badge-put { background-color: #dd6b20; }
+    .badge-delete { background-color: #e53e3e; }
+</style>
+</head>
+<body>
+
+<h1>SFA Backend - Master Data Documentation</h1>
+<div class="intro">
+    This document serves as an engineering reference guide for the <strong>Designation Master</strong>, <strong>Department Master</strong>, <strong>Division Master</strong>, and <strong>Sub Area Master</strong> tables in the Sales Force Automation (SFA) backend system. 
+    It outlines the physical endpoints, parameters, tables, and provides step-by-step human explanations of the database queries.
+</div>
+
+<hr />
+
+<h1>💼 Part 1: Designation Master</h1>
+<p>The Designation Master manages employee roles and job titles. It uses a structured alphanumeric code system (e.g. <code>DES001</code>, <code>DES002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>tbl_desig_mst</code></td>
+        <td>
+            <code>c_code</code> VARCHAR(50) Primary Key<br />
+            <code>c_name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>c_sh_name</code> VARCHAR(50) Nullable<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP<br />
+            <code>c_modifier</code> VARCHAR(50)
+        </td>
+        <td>
+            * Unique case-insensitive names<br />
+            * Alphanumeric pattern <code>DES[0-9]+</code><br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h2>1.1 Get Next Designation Code</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/designation/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next designation code in the sequence (e.g. if the highest code is <code>DES041</code>, it suggests <code>DES042</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "c_code" 
+FROM "tbl_desig_mst"
+WHERE "c_code" ~ '^DES[0-9]+$'
+ORDER BY CAST(SUBSTRING("c_code" FROM 4) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query calculates the next numeric code in the database.
+    <ol>
+        <li>We use PostgreSQL's regular expression match operator (<code>~</code>) with the pattern <code>'^DES[0-9]+$'</code> to filter for codes that start with "DES" and end with numbers, ignoring any manual anomalies.</li>
+        <li>We use <code>SUBSTRING("c_code" FROM 4)</code> to strip the "DES" prefix, leaving only the digits (e.g., "DES041" becomes "041").</li>
+        <li>We use <code>CAST(... AS INTEGER)</code> to convert the numeric string into an integer. Without this cast, sorting lexicographically would order "DES9" as greater than "DES10".</li>
+        <li>We sort the integers in descending order (<code>DESC</code>) and retrieve the top result (<code>LIMIT 1</code>) to find the highest number in the system. The application then increments this integer by 1 and pads it to three digits. If the table is empty, the system defaults to <code>DES001</code>.</li>
+    </ol>
+</div>
+
+---
+
+<h2>1.2 Create Designation</h2>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/designation</code></p>
+<p><strong>Description:</strong> Creates a new designation. It enforces case-insensitive name uniqueness among active designations.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Case-Insensitive Duplicate Check</h4>
+<pre>SELECT "c_code" 
+FROM "tbl_desig_mst"
+WHERE LOWER("c_name") = LOWER($1) -- $1: New designation name proposed by user
+  AND "n_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query checks for name duplicates. 
+    By applying the <code>LOWER()</code> function to both the database column and the user input, we run a case-insensitive check. This prevents duplicate entries like "Sales Manager" and "sales manager". 
+    We also append <code>AND "n_deleted" = 0</code> to ignore designations that have been soft-deleted.
+</div>
+
+<h4>Query 2: Insert Designation</h4>
+<pre>INSERT INTO "tbl_desig_mst" (
+  "c_code", 
+  "c_name", 
+  "c_sh_name", 
+  "n_deleted", 
+  "d_created", 
+  "c_modifier"
+)
+VALUES (
+  $1, -- $1: Sequential generated code (e.g. 'DES002')
+  $2, -- $2: Trimmed designation name (e.g. 'Area Manager')
+  $3, -- $3: Trimmed short name (e.g. 'AM', optional)
+  0,  -- 0: active status (not deleted)
+  NOW(), -- Current database timestamp
+  $4  -- $4: User ID of creating administrator
+);</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Once the code is generated and duplication checks pass, we insert the record. 
+    The designation is initialized as active (<code>n_deleted = 0</code>), stamped with the current time (<code>NOW()</code>), and associated with the admin who created it (<code>c_modifier</code>).
+</div>
+
+---
+
+<h2>1.3 Get All / Search Designations</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/designation</code></p>
+<p><strong>Description:</strong> Retrieves a paginated, searchable list of designations. It supports wildcard searches (`*` is translated to database `%`).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT 
+  "c_code", 
+  "c_name", 
+  "c_sh_name", 
+  "d_created", 
+  "d_modified", 
+  COUNT(*) OVER() AS total_count -- Virtual column calculating total records matching query filters
+FROM "tbl_desig_mst"
+WHERE "n_deleted" = 0
+  AND LOWER("c_name") LIKE LOWER($1) -- $1: Wildcard pattern for name (e.g. '%sales%')
+  AND LOWER("c_code") LIKE LOWER($2) -- $2: Wildcard pattern for code (e.g. 'DES%')
+ORDER BY "c_code"
+LIMIT $3    -- $3: Paging limits size (e.g. 10)
+OFFSET $4;  -- $4: Pagination skip offset (e.g. 0)</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query retrieves data for list views.
+    <ul>
+        <li><strong>Partial Wildcard Search:</strong> We use the <code>LIKE</code> operator alongside <code>LOWER()</code> to search designations. If a user types <code>Sales*</code>, the code converts the asterisk to <code>%</code> (rendering <code>sales%</code>) to fetch all designations starting with "Sales".</li>
+        <li><strong>Single-Query Pagination (Window Function):</strong> We append <code>COUNT(*) OVER() as total_count</code>. This window function calculates the total number of records matching the filters across the entire dataset and returns this count in a virtual column on every row. This avoids running a separate <code>SELECT COUNT(*)</code> query, saving a database round-trip.</li>
+        <li><strong>Pagination Boundaries:</strong> <code>LIMIT</code> restricts the number of rows returned per page, and <code>OFFSET</code> skips rows from previous pages.</li>
+    </ul>
+</div>
+
+---
+
+<h2>1.4 Update Designation</h2>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/designation/:code</code></p>
+<p><strong>Description:</strong> Updates an existing designation's name and short name. It verifies that the target exists and that the new name does not conflict with another designation.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Verify Record Exists</h4>
+<pre>SELECT "c_code" 
+FROM "tbl_desig_mst" 
+WHERE "c_code" = $1 -- $1: Route code param (e.g. 'DES001')
+  AND "n_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Verifies that the designation we are trying to edit exists and is active. If this check fails, the API returns a 404 Not Found error.
+</div>
+
+<h4>Query 2: Uniqueness Check (Excluding Self)</h4>
+<pre>SELECT "c_code" 
+FROM "tbl_desig_mst" 
+WHERE LOWER("c_name") = LOWER($1) -- $1: New designation name proposed
+  AND "n_deleted" = 0 
+  AND "c_code" != $2;             -- $2: Exclude the record currently being modified</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    When renaming a designation, we check if the new name is already taken by another record. We append <code>AND "c_code" != $2</code> to exclude the current record from the check, allowing the user to update other fields (like the short name) without triggering a duplicate error.
+</div>
+
+<h4>Query 3: Apply Updates</h4>
+<pre>UPDATE "tbl_desig_mst"
+SET 
+  "c_name" = $1,      -- $1: New designation name
+  "c_sh_name" = $2,   -- $2: New short name
+  "d_modified" = NOW(), 
+  "c_modifier" = $3   -- $3: User ID of modifying administrator
+WHERE "c_code" = $4;  -- $4: Target code to modify (e.g. 'DES001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Applies the changes, updates the modification timestamp (<code>d_modified</code>), and logs the admin user ID (<code>c_modifier</code>).
+</div>
+
+---
+
+<h2>1.5 Delete Designation (Soft Delete)</h2>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/designation/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a designation, removing it from active lists while preserving historical data integrity.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "tbl_desig_mst"
+SET 
+  "n_deleted" = 1, 
+  "d_modified" = NOW(), 
+  "c_modifier" = $1 -- $1: User ID of admin deleting the record
+WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DES001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Rather than using a destructive <code>DELETE FROM</code> query, we perform a soft delete by setting <code>n_deleted = 1</code>. 
+    This hides the designation from active lookup lists while retaining the record for referential integrity (e.g., in case historical sales or employee files link to this role code). We also log the modification time and the admin who performed the deletion.
+</div>
+
+<hr />
+
+<h1>🏢 Part 2: Department Master</h1>
+<p>The Department Master manages business units. It includes validation links to the Field Staff Master (<code>Tbl_FS_Mst</code>) for travel and material desk incharge roles.</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>tbl_department_mst</code></td>
+        <td>
+            <code>C_Code</code> VARCHAR(10) Primary Key (prefix: <code>DP</code>)<br />
+            <code>c_name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>c_short_name</code> VARCHAR(10) Nullable<br />
+            <code>C_travel_desk_location</code> VARCHAR(50) (Checked against HYDERABAD/MUMBAI)<br />
+            <code>C_travel_desk_incharge</code> VARCHAR(10) FK → <code>Tbl_FS_Mst.C_Code</code><br />
+            <code>C_material_desk_location</code> VARCHAR(50) (Checked against HYDERABAD/MUMBAI)<br />
+            <code>C_material_desk_incharge</code> VARCHAR(10) FK → <code>Tbl_FS_Mst.C_Code</code><br />
+            <code>N_SFA_ROLE</code> INTEGER (0 = No, 1 = Yes)<br />
+            <code>N_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>D_created</code> TIMESTAMP, <code>D_modified</code> TIMESTAMP, <code>C_modifier</code> VARCHAR(50)
+        </td>
+        <td>
+            * Unique department names<br />
+            * Code format: <code>DP0001</code>, <code>DP0002</code>...<br />
+            * Validates travel/material locations & staff codes<br />
+            * Soft delete via <code>N_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h2>2.1 Get Next Department Code</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/department/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next department code in the sequence (e.g. `DP0041` ➔ `DP0042`).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" 
+FROM "tbl_department_mst"
+WHERE "C_Code" ~ '^DP[0-9]+$'
+ORDER BY CAST(SUBSTRING("C_Code" FROM 3) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This matches designation code generation. 
+    It filters for valid alphanumeric structures starting with "DP" (<code>^DP[0-9]+$</code>), extracts the numeric portion starting at index 3 (<code>SUBSTRING("C_Code" FROM 3)</code>), casts the value to an integer, and sorts descending to retrieve the highest active number.
+</div>
+
+---
+
+<h2>2.2 Create Department</h2>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/department</code></p>
+<p><strong>Description:</strong> Creates a new department. It validates locations (must be Mumbai or Hyderabad) and ensures assigned incharges exist in the employee table.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Name Duplicate Check</h4>
+<pre>SELECT "C_Code" 
+FROM "tbl_department_mst" 
+WHERE LOWER("c_name") = LOWER($1) -- $1: New department name proposed
+  AND "N_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Runs a case-insensitive check against active departments to prevent duplicate names in the system.
+</div>
+
+<h4>Query 2: Employee Code Validation (Foreign Key Check)</h4>
+<pre>SELECT "C_Code" 
+FROM "Tbl_FS_Mst" 
+WHERE "C_Code" = $1 -- $1: Code of the employee to check (e.g. 'EMP010')
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    If a Travel Desk or Material Desk Incharge employee code is provided, the API runs this query against the Field Staff Master table (<code>Tbl_FS_Mst</code>) to verify that the employee code exists. This manual validation check prevents orphan foreign keys.
+</div>
+
+<h4>Query 3: Insert Department</h4>
+<pre>INSERT INTO "tbl_department_mst" (
+  "C_Code", 
+  "c_name", 
+  "c_short_name",
+  "C_travel_desk_location", 
+  "C_travel_desk_incharge",
+  "C_material_desk_location", 
+  "C_material_desk_incharge",
+  "N_SFA_ROLE", 
+  "N_deleted", 
+  "D_created", 
+  "C_modifier"
+)
+VALUES (
+  $1, -- $1: Sequential generated code (e.g. 'DP0002')
+  $2, -- $2: Trimmed department name (e.g. 'Human Resources')
+  $3, -- $3: Trimmed short name (e.g. 'HR', optional)
+  $4, -- $4: Travel Desk Location (e.g. 'HYDERABAD' or 'MUMBAI', optional)
+  $5, -- $5: Employee code for travel desk incharge (e.g. 'EMP021', optional)
+  $6, -- $6: Material Desk Location (e.g. 'MUMBAI', optional)
+  $7, -- $7: Employee code for material desk incharge (e.g. 'EMP033', optional)
+  $8, -- $8: SFA Role access flag (0 = No, 1 = Yes)
+  0,  -- 0: active status (not deleted)
+  NOW(), -- Current database timestamp
+  $9  -- $9: User ID of creating administrator
+);</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Inserts the department record.
+    It writes the code, name, desk configurations, and SFA role assignment (<code>N_SFA_ROLE</code>, used for workflow filtering). It sets <code>N_deleted</code> to <code>0</code>, and writes creation audit fields.
+</div>
+
+---
+
+<h2>2.3 Get All / Search Departments</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/department</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of departments. It supports wildcard searches (`*`) and partial matches on names or codes.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT 
+  "C_Code",
+  "c_name",
+  "c_short_name",
+  "C_travel_desk_location",
+  "C_travel_desk_incharge",
+  "C_material_desk_location",
+  "C_material_desk_incharge",
+  "N_SFA_ROLE",
+  "D_created",
+  "D_modified", 
+  COUNT(*) OVER() AS total_count -- Virtual column calculating total records matching query filters
+FROM "tbl_department_mst"
+WHERE "N_deleted" = 0
+  AND LOWER("c_name") LIKE LOWER($1) -- $1: Wildcard pattern for name (e.g. '%logistics%')
+  AND LOWER("C_Code") LIKE LOWER($2) -- $2: Wildcard pattern for code (e.g. 'DP%')
+ORDER BY "C_Code"
+LIMIT $3    -- $3: Paging limits size (e.g. 10)
+OFFSET $4;  -- $4: Pagination skip offset (e.g. 0)</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query retrieves active, non-deleted departments.
+    It uses <code>LIKE</code> with wildcards for name and code searches, handles sorting by code, applies pagination bounds (<code>LIMIT</code>/<code>OFFSET</code>), and uses the <code>COUNT(*) OVER()</code> window function to return the total matching count for pagination calculations in the UI.
+</div>
+
+---
+
+<h2>2.4 Update Department</h2>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/department/:code</code></p>
+<p><strong>Description:</strong> Updates an existing department. It verifies that the record exists, checks for name conflicts, and validates incharge employee codes.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Verify Record Exists</h4>
+<pre>SELECT "C_Code" 
+FROM "tbl_department_mst" 
+WHERE "C_Code" = $1 -- $1: Route code param (e.g. 'DP0001')
+  AND "N_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Checks that the target department exists and is active before applying changes.
+</div>
+
+<h4>Query 2: Uniqueness Check (Excluding Self)</h4>
+<pre>SELECT "C_Code" 
+FROM "tbl_department_mst" 
+WHERE LOWER("c_name") = LOWER($1) -- $1: New department name proposed
+  AND "N_deleted" = 0 
+  AND "C_Code" != $2;             -- $2: Exclude the record currently being modified</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Prevents renaming a department to a name already used by another active department.
+</div>
+
+<h4>Query 3: Verify Employee Staff Codes</h4>
+<pre>SELECT "C_Code" 
+FROM "Tbl_FS_Mst" 
+WHERE "C_Code" = $1 -- $1: Code to check (e.g. 'EMP010')
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Validates that newly assigned desk incharge employee codes exist in the staff master database.
+</div>
+
+<h4>Query 4: Update Department Parameters</h4>
+<pre>UPDATE "tbl_department_mst"
+SET 
+  "c_name" = $1, 
+  "c_short_name" = $2,
+  "C_travel_desk_location" = $3, 
+  "C_travel_desk_incharge" = $4,
+  "C_material_desk_location" = $5, 
+  "C_material_desk_incharge" = $6,
+  "N_SFA_ROLE" = $7,
+  "D_modified" = NOW(), 
+  "C_modifier" = $8     -- $8: User ID of modifying administrator
+WHERE "C_Code" = $9;    -- $9: Target department code to modify (e.g. 'DP0001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Applies the updates, updates the modification timestamp (<code>D_modified</code>), and logs the admin user ID (<code>C_modifier</code>).
+</div>
+
+---
+
+<h2>2.5 Delete Department (Soft Delete)</h2>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/department/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes the department by updating its deletion status flag.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "tbl_department_mst"
+SET 
+  "N_deleted" = 1, 
+  "D_modified" = NOW(), 
+  "C_modifier" = $1 -- $1: User ID of admin deleting the record
+WHERE "C_Code" = $2;  -- $2: Target department code to soft delete (e.g. 'DP0001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Performs a soft delete by setting the <code>N_deleted</code> flag to <code>1</code>. This hides the department from active lists while preserving historical associations.
+</div>
+
+<hr />
+
+<h1>🌐 Part 3: Division Master</h1>
+<p>The Division Master manages division information. It uses a structured alphanumeric code system (e.g. <code>DI0001</code>, <code>DI0002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Div_Mst</code></td>
+        <td>
+            <code>c_code</code> VARCHAR(10) Primary Key<br />
+            <code>c_name</code> VARCHAR(50) Not Null (Unique Name)<br />
+            <code>c_sh_name</code> VARCHAR(7) Nullable<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP<br />
+            <code>c_modifier</code> VARCHAR(10)
+        </td>
+        <td>
+            * Unique case-insensitive names<br />
+            * Alphanumeric pattern <code>DI[0-9]+</code><br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h2>3.1 Get Next Division Code</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/division/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next division code in the sequence (e.g. if the highest code is <code>DI0001</code>, it suggests <code>DI0002</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "c_code" 
+FROM "Tbl_Div_Mst"
+WHERE "c_code" ~ '^DI[0-9]+$'
+ORDER BY CAST(SUBSTRING("c_code" FROM 3) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query calculates the next numeric code in the database.
+    <ol>
+        <li>We use PostgreSQL's regular expression match operator (<code>~</code>) with the pattern <code>'^DI[0-9]+$'</code> to filter for codes that start with "DI" and end with numbers, ignoring any manual anomalies.</li>
+        <li>We use <code>SUBSTRING("c_code" FROM 3)</code> to strip the "DI" prefix, leaving only the digits (e.g., "DI0001" becomes "0001").</li>
+        <li>We use <code>CAST(... AS INTEGER)</code> to convert the numeric string into an integer. Without this cast, sorting lexicographically would order "DI9" as greater than "DI10".</li>
+        <li>We sort the integers in descending order (<code>DESC</code>) and retrieve the top result (<code>LIMIT 1</code>) to find the highest number in the system. The application then increments this integer by 1 and pads it to four digits. If the table is empty, the system defaults to <code>DI0001</code>.</li>
+    </ol>
+</div>
+
+---
+
+<h2>3.2 Create Division</h2>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/division</code></p>
+<p><strong>Description:</strong> Creates a new division. It enforces case-insensitive name uniqueness among active divisions.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Case-Insensitive Duplicate Check</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_Div_Mst"
+WHERE LOWER("c_name") = LOWER($1) -- $1: New division name proposed by user
+  AND "n_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query checks for name duplicates. 
+    By applying the <code>LOWER()</code> function to both the database column and the user input, we run a case-insensitive check. This prevents duplicate entries like "Pharma" and "pharma". 
+    We also append <code>AND "n_deleted" = 0</code> to ignore divisions that have been soft-deleted.
+</div>
+
+<h4>Query 2: Insert Division</h4>
+<pre>INSERT INTO "Tbl_Div_Mst" (
+  "c_code", 
+  "c_name", 
+  "c_sh_name", 
+  "n_deleted", 
+  "d_created", 
+  "c_modifier"
+)
+VALUES (
+  $1, -- $1: Sequential generated code (e.g. 'DI0002')
+  $2, -- $2: Trimmed division name (e.g. 'Pharma')
+  $3, -- $3: Trimmed short name (e.g. 'PH', optional)
+  0,  -- 0: active status (not deleted)
+  NOW(), -- Current database timestamp
+  $4  -- $4: User ID of creating administrator
+);</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Once the code is generated and duplication checks pass, we insert the record. 
+    The division is initialized as active (<code>n_deleted = 0</code>), stamped with the current time (<code>NOW()</code>), and associated with the admin who created it (<code>c_modifier</code>).
+</div>
+
+---
+
+<h2>3.3 Get All / Search Divisions</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/division</code></p>
+<p><strong>Description:</strong> Retrieves a paginated, searchable list of divisions. It supports wildcard searches (`*` is translated to database `%`).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT 
+  "c_code", 
+  "c_name", 
+  "c_sh_name", 
+  "d_created", 
+  "d_modified", 
+  COUNT(*) OVER() AS total_count -- Virtual column calculating total records matching query filters
+FROM "Tbl_Div_Mst"
+WHERE "n_deleted" = 0
+  AND LOWER("c_name") LIKE LOWER($1) -- $1: Wildcard pattern for name (e.g. '%sales%')
+  AND LOWER("c_code") LIKE LOWER($2) -- $2: Wildcard pattern for code (e.g. 'DI%')
+ORDER BY "c_code"
+LIMIT $3    -- $3: Paging limits size (e.g. 10)
+OFFSET $4;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query retrieves data for list views.
+    <ul>
+        <li><strong>Partial Wildcard Search:</strong> We use the <code>LIKE</code> operator alongside <code>LOWER()</code> to search divisions. If a user types <code>Pharm*</code>, the code converts the asterisk to <code>%</code> (rendering <code>pharm%</code>) to fetch all divisions starting with "Pharm".</li>
+        <li><strong>Single-Query Pagination (Window Function):</strong> We append <code>COUNT(*) OVER() as total_count</code>. This window function calculates the total number of records matching the filters across the entire dataset and returns this count in a virtual column on every row. This avoids running a separate <code>SELECT COUNT(*)</code> query, saving a database round-trip.</li>
+        <li><strong>Pagination Boundaries:</strong> <code>LIMIT</code> restricts the number of rows returned per page, and <code>OFFSET</code> skips rows from previous pages.</li>
+    </ul>
+</div>
+
+---
+
+<h2>3.4 Update Division</h2>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/division/:code</code></p>
+<p><strong>Description:</strong> Updates an existing division's name and short name. It verifies that the target exists and that the new name does not conflict with another division.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Verify Record Exists</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_Div_Mst" 
+WHERE "c_code" = $1 -- $1: Route code param (e.g. 'DI0001')
+  AND "n_deleted" = 0;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Verifies that the division we are trying to edit exists and is active. If this check fails, the API returns a 404 Not Found error.
+</div>
+
+<h4>Query 2: Uniqueness Check (Excluding Self)</h4>
+<pre>SELECT "c_code" 
+FROM "Tbl_Div_Mst" 
+WHERE LOWER("c_name") = LOWER($1) -- $1: New division name proposed
+  AND "n_deleted" = 0 
+  AND "c_code" != $2;             -- $2: Exclude the record currently being modified</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    When renaming a division, we check if the new name is already taken by another record. We append <code>AND "c_code" != $2</code> to exclude the current record from the check, allowing the user to update other fields (like the short name) without triggering a duplicate error.
+</div>
+
+<h4>Query 3: Apply Updates</h4>
+<pre>UPDATE "Tbl_Div_Mst"
+SET 
+  "c_name" = $1,      -- $1: New division name
+  "c_sh_name" = $2,   -- $2: New short name
+  "d_modified" = NOW(), 
+  "c_modifier" = $3   -- $3: User ID of modifying administrator
+WHERE "c_code" = $4;  -- $4: Target code to modify (e.g. 'DI0001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Applies the changes, updates the modification timestamp (<code>d_modified</code>), and logs the admin user ID (<code>c_modifier</code>).
+</div>
+
+---
+
+<h2>3.5 Delete Division (Soft Delete)</h2>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/division/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a division, removing it from active lists while preserving historical data integrity.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Div_Mst"
+SET 
+  "n_deleted" = 1, 
+  "d_modified" = NOW(), 
+  "c_modifier" = $1 -- $1: User ID of admin deleting the record
+WHERE "c_code" = $2;  -- $2: Target code to soft delete (e.g. 'DI0001')</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    Rather than using a destructive <code>DELETE FROM</code> query, we perform a soft delete by setting <code>n_deleted = 1</code>. 
+    This hides the division from active lookup lists while retaining the record for referential integrity (e.g., in case historical sales link to this division code). We also log the modification time and the admin who performed the deletion.
+</div>
+
+<hr />
+
+<h1>🗺 Part 4: Sub Area Master</h1>
+<p>The Sub Area Master manages sub-locality or sector information within areas. It uses a structured alphanumeric code system (e.g. <code>SA0001</code>, <code>SA0002</code>).</p>
+
+<table style="width:100%">
+    <tr>
+        <th>Table Name</th>
+        <th>Columns & Constraints</th>
+        <th>Core Rules</th>
+    </tr>
+    <tr>
+        <td><code>Tbl_Sub_Area_Mst</code></td>
+        <td>
+            <code>C_Code</code> VARCHAR(10) Primary Key<br />
+            <code>C_Name</code> VARCHAR(50) Not Null (Unique Name in same Area)<br />
+            <code>C_Sh_Name</code> VARCHAR(7) Nullable<br />
+            <code>C_Area_Code</code> VARCHAR(10) Not Null FK → <code>Tbl_Area_Mst.C_Code</code><br />
+            <code>N_HQ_Flag</code> NUMERIC Default 0 (Same HQ Checkbox)<br />
+            <code>n_deleted</code> SMALLINT Default 0 (Active)<br />
+            <code>d_created</code> TIMESTAMP, <code>d_modified</code> TIMESTAMP, <code>c_modifier</code> VARCHAR(10)<br />
+            <code>n_lami</code> VARCHAR(100) Nullable (Latitude)<br />
+            <code>n_lgmi</code> VARCHAR(100) Nullable (Longitude)<br />
+            <code>C_Classification_Code</code> VARCHAR(20) Nullable
+        </td>
+        <td>
+            * Unique sub area name per Area<br />
+            * Code format: <code>SA[0-9]+</code><br />
+            * Validates parent Area Code exists<br />
+            * Soft delete via <code>n_deleted = 1</code>
+        </td>
+    </tr>
+</table>
+
+---
+
+<h2>4.1 Get Next Sub Area Code</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/sub-area/next-code</code></p>
+<p><strong>Description:</strong> Auto-calculates the next sub area code in the sequence (e.g. if the highest code is <code>SA0041</code>, it suggests <code>SA0042</code>).</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT "C_Code" 
+FROM "Tbl_Sub_Area_Mst"
+WHERE "C_Code" ~ '^SA[0-9]+$'
+ORDER BY CAST(SUBSTRING("C_Code" FROM 3) AS INTEGER) DESC
+LIMIT 1;</pre>
+
+<div class="explanation-box">
+    <div class="explanation-title">💡 Human Explanation of the Query:</div>
+    This query calculates the next numeric code in the database.
+    <ol>
+        <li>We filter for codes starting with "SA" and ending in digits using regex match.</li>
+        <li>We strip the "SA" prefix using <code>SUBSTRING("C_Code" FROM 3)</code>.</li>
+        <li>We cast the result to an integer and sort descending to find the highest number in the system, which is then incremented by 1 and padded to four digits.</li>
+    </ol>
+</div>
+
+---
+
+<h2>4.2 Create Sub Area</h2>
+<p><span class="badge badge-post">POST</span> <code>/api/masters/sub-area</code></p>
+<p><strong>Description:</strong> Creates a new sub area. Enforces name uniqueness within the same Area and validates that the parent Area exists.</p>
+
+<h3>Database Queries Executed:</h3>
+
+<h4>Query 1: Name Duplicate Check within the Same Area</h4>
+<pre>SELECT "C_Code" 
+FROM "Tbl_Sub_Area_Mst"
+WHERE LOWER("C_Name") = LOWER($1)
+  AND "C_Area_Code" = $2
+  AND "n_deleted" = 0;</pre>
+
+<h4>Query 2: Parent Area Validation</h4>
+<pre>SELECT "C_Code" 
+FROM "Tbl_Area_Mst" 
+WHERE "C_Code" = $1 AND "n_deleted" = 0
+LIMIT 1;</pre>
+
+<h4>Query 3: Insert Sub Area</h4>
+<pre>INSERT INTO "Tbl_Sub_Area_Mst" (
+  "C_Code", 
+  "C_Name", 
+  "C_Sh_Name", 
+  "C_Area_Code", 
+  "N_HQ_Flag", 
+  "n_lami", 
+  "n_lgmi", 
+  "C_Classification_Code", 
+  "n_deleted", 
+  "d_created", 
+  "c_modifier"
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, NOW(), $9);</pre>
+
+---
+
+<h2>4.3 Get All / Search Sub Areas</h2>
+<p><span class="badge badge-get">GET</span> <code>/api/masters/sub-area</code></p>
+<p><strong>Description:</strong> Retrieves a paginated list of sub areas. Supports wildcards and filtering by name, code, and area.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>SELECT sa."C_Code" as c_code, sa."C_Name" as c_name, sa."C_Sh_Name" as c_sh_name, 
+       sa."C_Area_Code" as c_area_code, a."C_Name" as c_area_name,
+       sa."N_HQ_Flag" as n_hq_flag, sa."n_lami" as n_lami, sa."n_lgmi" as n_lgmi,
+       sa."C_Classification_Code" as c_classification_code,
+       sa."d_created", sa."d_modified", COUNT(*) OVER() AS total_count
+FROM "Tbl_Sub_Area_Mst" sa
+LEFT JOIN "Tbl_Area_Mst" a ON sa."C_Area_Code" = a."C_Code"
+WHERE sa."n_deleted" = 0
+  AND LOWER(sa."C_Name") LIKE LOWER($1)
+  AND LOWER(sa."C_Code") LIKE LOWER($2)
+  AND (LOWER(sa."C_Area_Code") LIKE LOWER($3) OR LOWER(a."C_Name") LIKE LOWER($3))
+ORDER BY sa."C_Code"
+LIMIT $4 OFFSET $5;</pre>
+
+---
+
+<h2>4.4 Update Sub Area</h2>
+<p><span class="badge badge-put">PUT</span> <code>/api/masters/sub-area/:code</code></p>
+<p><strong>Description:</strong> Updates an existing sub area. Validates exists, parent Area, and name duplicate exclusion.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Sub_Area_Mst"
+SET 
+  "C_Name" = $1, 
+  "C_Sh_Name" = $2, 
+  "C_Area_Code" = $3, 
+  "N_HQ_Flag" = $4, 
+  "n_lami" = $5, 
+  "n_lgmi" = $6, 
+  "C_Classification_Code" = $7,
+  "d_modified" = NOW(), 
+  "c_modifier" = $8
+WHERE "C_Code" = $9;</pre>
+
+---
+
+<h2>4.5 Delete Sub Area (Soft Delete)</h2>
+<p><span class="badge badge-delete">DELETE</span> <code>/api/masters/sub-area/:code</code></p>
+<p><strong>Description:</strong> Soft-deletes a sub area by setting `n_deleted = 1`.</p>
+
+<h3>Database Queries Executed:</h3>
+<pre>UPDATE "Tbl_Sub_Area_Mst"
+SET 
+  "n_deleted" = 1, 
+  "d_modified" = NOW(), 
+  "c_modifier" = $1
+WHERE "C_Code" = $2;</pre>
+
+</body>
+</html>
