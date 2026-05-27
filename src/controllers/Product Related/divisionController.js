@@ -5,25 +5,19 @@ const pool = require('../../config/db');
 //   c_code     VARCHAR(10) PK  — auto-generated: DI0001, DI0034...
 //   c_name     VARCHAR(50)     — Name
 //   c_sh_name  VARCHAR(7)      — Short Name (optional)
-//   n_deleted  SMALLINT        — 0 = active, 1 = deleted
 //   d_created  TIMESTAMP
 //   d_modified TIMESTAMP
 //   c_modifier VARCHAR(10)     — last modified by (c_user_id)
 // ─────────────────────────────────────────────────────────────
 
-// ── Helper: generate next DI code ───────────────────────────
-async function generateNextCode() {
-    const result = await pool.query(`
-        SELECT "c_code" FROM "Tbl_Div_Mst"
-        WHERE "c_code" ~ '^DI[0-9]+$'
-        ORDER BY CAST(SUBSTRING("c_code" FROM 3) AS INTEGER) DESC
-        LIMIT 1
-    `);
-
-    if (result.rows.length === 0) return 'DI0001';
-
-    const lastNum = parseInt(result.rows[0].c_code.replace('DI', ''), 10);
-    const nextNum = lastNum + 1;
+// ── Helper: peek next DI code (no increment) ─────────────────
+async function peekNextCode() {
+    const seq = await pool.query(
+        `SELECT last_value, is_called FROM "Tbl_Div_Mst_n_seq_seq"`
+    );
+    const nextNum = seq.rows[0].is_called
+        ? parseInt(seq.rows[0].last_value, 10) + 1
+        : parseInt(seq.rows[0].last_value, 10);
     return 'DI' + String(nextNum).padStart(4, '0');
 }
 
@@ -40,7 +34,7 @@ async function create(req, res) {
         // Check duplicate name
         const dup = await pool.query(
             `SELECT "c_code" FROM "Tbl_Div_Mst"
-             WHERE LOWER("c_name") = LOWER($1) AND "n_deleted" = 0`,
+             WHERE LOWER("c_name") = LOWER($1)`,
             [c_name.trim()]
         );
         if (dup.rows.length > 0) {
@@ -50,13 +44,18 @@ async function create(req, res) {
             });
         }
 
-        const c_code = await generateNextCode();
-
-        await pool.query(
+        const inserted = await pool.query(
             `INSERT INTO "Tbl_Div_Mst"
-               ("c_code", "c_name", "c_sh_name", "n_deleted", "d_created", "c_modifier")
-             VALUES ($1, $2, $3, 0, NOW(), $4)`,
-            [c_code, c_name.trim(), c_sh_name ? c_sh_name.trim() : null, req.admin.c_user_id]
+               ("c_code", "c_name", "c_sh_name", "d_created", "c_modifier")
+             VALUES ('TEMP', $1, $2, NOW(), $3)
+             RETURNING "n_seq"`,
+            [c_name.trim(), c_sh_name ? c_sh_name.trim() : null, req.admin.c_user_id]
+        );
+        const n_seq = parseInt(inserted.rows[0].n_seq, 10);
+        const c_code = 'DI' + String(n_seq).padStart(4, '0');
+        await pool.query(
+            `UPDATE "Tbl_Div_Mst" SET "c_code" = $1 WHERE "n_seq" = $2`,
+            [c_code, n_seq]
         );
 
         return res.status(201).json({
@@ -101,7 +100,7 @@ async function getAll(req, res) {
         let query = `
             SELECT "c_code", "c_name", "c_sh_name", "d_created", "d_modified", COUNT(*) OVER() as total_count
             FROM "Tbl_Div_Mst"
-            WHERE "n_deleted" = 0
+            WHERE 1=1
         `;
         const params = [];
 
@@ -171,7 +170,7 @@ async function update(req, res) {
         // Check exists
         const exists = await pool.query(
             `SELECT "c_code" FROM "Tbl_Div_Mst"
-             WHERE "c_code" = $1 AND "n_deleted" = 0`,
+             WHERE "c_code" = $1`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
@@ -181,7 +180,7 @@ async function update(req, res) {
         // Check duplicate name (excluding self)
         const dup = await pool.query(
             `SELECT "c_code" FROM "Tbl_Div_Mst"
-             WHERE LOWER("c_name") = LOWER($1) AND "n_deleted" = 0 AND "c_code" != $2`,
+             WHERE LOWER("c_name") = LOWER($1) AND "c_code" != $2`,
             [c_name.trim(), code.toUpperCase()]
         );
         if (dup.rows.length > 0) {
@@ -215,7 +214,7 @@ async function update(req, res) {
     }
 }
 
-// ─── DELETE (soft) ────────────────────────────────────────────
+// ─── DELETE (hard) ────────────────────────────────────────────
 // DELETE /api/masters/division/:code
 async function remove(req, res) {
     const { code } = req.params;
@@ -223,7 +222,7 @@ async function remove(req, res) {
     try {
         const exists = await pool.query(
             `SELECT "c_code" FROM "Tbl_Div_Mst"
-             WHERE "c_code" = $1 AND "n_deleted" = 0`,
+             WHERE "c_code" = $1`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
@@ -231,10 +230,8 @@ async function remove(req, res) {
         }
 
         await pool.query(
-            `UPDATE "Tbl_Div_Mst"
-             SET "n_deleted" = 1, "d_modified" = NOW(), "c_modifier" = $1
-             WHERE "c_code" = $2`,
-            [req.admin.c_user_id, code.toUpperCase()]
+            `DELETE FROM "Tbl_Div_Mst" WHERE "c_code" = $1`,
+            [code.toUpperCase()]
         );
 
         return res.status(200).json({
@@ -252,7 +249,7 @@ async function remove(req, res) {
 // GET /api/masters/division/next-code
 async function getNextCode(req, res) {
     try {
-        const nextCode = await generateNextCode();
+        const nextCode = await peekNextCode();
         return res.status(200).json({
             success: true,
             nextCode

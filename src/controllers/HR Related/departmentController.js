@@ -31,18 +31,20 @@ const TRAVEL_DESK_LOCATIONS = [
 
 const VALID_LOCATION_VALUES = TRAVEL_DESK_LOCATIONS.map(l => l.value);
 
-// ── Helper: generate next DP code ────────────────────────────
-async function generateNextCode() {
-    const result = await pool.query(`
-        SELECT "C_Code" FROM "tbl_department_mst"
-        WHERE "C_Code" ~ '^DP[0-9]+$'
-        ORDER BY CAST(SUBSTRING("C_Code" FROM 3) AS INTEGER) DESC
-        LIMIT 1
-    `);
-    if (result.rows.length === 0) return 'DP0001';
-    const lastNum = parseInt(result.rows[0].C_Code.replace('DP', ''), 10);
-    return 'DP' + String(lastNum + 1).padStart(4, '0');
+// ── Helper: peek next DP code (no increment) ─────────────────
+async function peekNextCode() {
+    const seq = await pool.query(
+        `SELECT last_value, is_called FROM tbl_department_mst_n_seq_seq`
+    );
+    const nextNum = seq.rows[0].is_called
+        ? parseInt(seq.rows[0].last_value, 10) + 1
+        : parseInt(seq.rows[0].last_value, 10);
+    return 'DP' + String(nextNum).padStart(4, '0');
 }
+
+// ── Helper: consume next DP code (increments sequence) ───────
+// NOTE: n_seq is SERIAL — auto-increments on INSERT. We use RETURNING n_seq
+// to get the assigned value and derive C_Code from it. No manual nextval needed.
 
 // ── Helper: validate incharge code exists in Tbl_FS_Mst ──────
 async function validateIncharge(code, fieldName) {
@@ -109,7 +111,7 @@ async function create(req, res) {
         // Duplicate name check
         const dup = await pool.query(
             `SELECT "C_Code" FROM "tbl_department_mst"
-             WHERE LOWER("c_name") = LOWER($1) AND "N_deleted" = 0`,
+             WHERE LOWER("c_name") = LOWER($1)`,
             [c_name.trim()]
         );
         if (dup.rows.length > 0) {
@@ -127,17 +129,16 @@ async function create(req, res) {
             return res.status(e.status).json({ success: false, message: e.message });
         }
 
-        const c_code = await generateNextCode();
-
-        await pool.query(
+        // Insert with TEMP code — n_seq auto-increments, then derive real C_Code from it
+        const inserted = await pool.query(
             `INSERT INTO "tbl_department_mst"
                ("C_Code", "c_name", "c_short_name",
                 "C_travel_desk_location", "C_travel_desk_incharge",
                 "C_material_desk_location", "C_material_desk_incharge",
-                "N_SFA_ROLE", "N_deleted", "D_created", "C_modifier")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,NOW(),$9)`,
+                "N_SFA_ROLE", "D_created", "C_modifier")
+             VALUES ('TEMP',$1,$2,$3,$4,$5,$6,$7,NOW(),$8)
+             RETURNING "n_seq"`,
             [
-                c_code,
                 c_name.trim(),
                 c_short_name ? c_short_name.trim() : null,
                 c_travel_desk_location   ? c_travel_desk_location.toUpperCase()   : null,
@@ -147,6 +148,14 @@ async function create(req, res) {
                 Number(n_sfa_role),
                 req.admin.c_user_id
             ]
+        );
+
+        const n_seq = parseInt(inserted.rows[0].n_seq, 10);
+        const c_code = 'DP' + String(n_seq).padStart(4, '0');
+
+        await pool.query(
+            `UPDATE "tbl_department_mst" SET "C_Code" = $1 WHERE "n_seq" = $2`,
+            [c_code, n_seq]
         );
 
         return res.status(201).json({
@@ -200,7 +209,7 @@ async function getAll(req, res) {
                    "C_material_desk_location","C_material_desk_incharge",
                    "N_SFA_ROLE","D_created","D_modified", COUNT(*) OVER() as total_count
             FROM "tbl_department_mst"
-            WHERE "N_deleted" = 0
+            WHERE 1=1
         `;
         const params = [];
 
@@ -296,7 +305,7 @@ async function update(req, res) {
         // Exists check
         const exists = await pool.query(
             `SELECT "C_Code" FROM "tbl_department_mst"
-             WHERE "C_Code" = $1 AND "N_deleted" = 0`,
+             WHERE "C_Code" = $1`,
             [code.toUpperCase()]
         );
         if (exists.rows.length === 0) {
@@ -306,7 +315,7 @@ async function update(req, res) {
         // Duplicate name check (excluding self)
         const dup = await pool.query(
             `SELECT "C_Code" FROM "tbl_department_mst"
-             WHERE LOWER("c_name") = LOWER($1) AND "N_deleted" = 0 AND "C_Code" != $2`,
+             WHERE LOWER("c_name") = LOWER($1) AND "C_Code" != $2`,
             [c_name.trim(), code.toUpperCase()]
         );
         if (dup.rows.length > 0) {
@@ -406,7 +415,7 @@ async function remove(req, res) {
 // GET /api/masters/department/next-code
 async function getNextCode(req, res) {
     try {
-        const nextCode = await generateNextCode();
+        const nextCode = await peekNextCode();
         return res.status(200).json({
             success: true,
             nextCode

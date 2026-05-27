@@ -139,7 +139,7 @@ const desigTableRows = [
     ['c_code',     'VARCHAR(50)',  'PK',  'No',  'Auto-generated code: DES001, DES002…'],
     ['c_name',     'VARCHAR(50)',  '',    'No',  'Full name of the designation'],
     ['c_sh_name',  'VARCHAR(50)',  '',    'Yes', 'Short / abbreviated name'],
-    ['n_deleted',  'SMALLINT',     '',    'No',  '0 = Active, 1 = Soft-deleted'],
+    ['n_deleted',  'SMALLINT',     '',    'No',  '0 = Active, 1 = Deleted (legacy column — hard delete now in use)'],
     ['d_created',  'TIMESTAMP',    '',    'No',  'Record creation timestamp'],
     ['d_modified', 'TIMESTAMP',    '',    'Yes', 'Last update timestamp'],
     ['c_modifier', 'VARCHAR(50)',  '',    'Yes', 'User ID of last modifier'],
@@ -150,7 +150,7 @@ const desigEndpoints = [
     ['POST',   '/api/masters/designation',            'Create a new designation'],
     ['GET',    '/api/masters/designation',            'Search / list designations (paginated)'],
     ['PUT',    '/api/masters/designation/:code',      'Update an existing designation by code'],
-    ['DELETE', '/api/masters/designation/:code',      'Soft-delete a designation by code'],
+    ['DELETE', '/api/masters/designation/:code',      'Permanently delete a designation by code'],
 ];
 
 // ── DEPARTMENT MASTER ────────────────────────────────────────
@@ -165,7 +165,7 @@ const deptTableRows = [
     ['C_material_desk_incharge',  'VARCHAR(10)',  'FK',  'Yes', 'FK → Tbl_FS_Mst.C_Code — material desk incharge'],
     ['C_material_desk_empcode',   'VARCHAR(10)',  '',    'Yes', 'Original material desk employee code column'],
     ['N_SFA_ROLE',                'INTEGER',      '',    'Yes', '0 = No SFA Role, 1 = Has SFA Role'],
-    ['N_deleted',                 'SMALLINT',     '',    'No',  '0 = Active, 1 = Soft-deleted (default 0)'],
+    ['N_deleted',                 'SMALLINT',     '',    'No',  '0 = Active, 1 = Deleted (legacy column — hard delete now in use, default 0)'],
     ['D_created',                 'TIMESTAMP',    '',    'No',  'Record creation timestamp (default NOW())'],
     ['D_modified',                'TIMESTAMP',    '',    'Yes', 'Last update timestamp'],
     ['C_modifier',                'VARCHAR(50)',  '',    'Yes', 'User ID of last modifier'],
@@ -178,7 +178,7 @@ const deptEndpoints = [
     ['POST',   '/api/masters/department',            'Create a new department'],
     ['GET',    '/api/masters/department',            'Search / list departments (paginated)'],
     ['PUT',    '/api/masters/department/:code',      'Update an existing department by code'],
-    ['DELETE', '/api/masters/department/:code',      'Soft-delete a department by code'],
+    ['DELETE', '/api/masters/department/:code',      'Permanently delete a department by code'],
 ];
 
 // ── SQL QUERIES ──────────────────────────────────────────────
@@ -186,36 +186,39 @@ const deptEndpoints = [
 const queries = {
     desig: [
         {
-            label: '1. Generate Next Code',
+            label: '1. Preview Next Code (no increment)',
             endpoint: 'GET /api/masters/designation/next-code',
-            sql: `SELECT "c_code" FROM "tbl_desig_mst"
-WHERE "c_code" ~ '^DES[0-9]+$'
-ORDER BY CAST(SUBSTRING("c_code" FROM 4) AS INTEGER) DESC
-LIMIT 1`,
+            sql: `SELECT last_value, is_called
+FROM tbl_desig_mst_n_seq_seq`,
             params: [],
-            explanation: `Fetches the designation row with the highest numeric suffix (e.g. DES041). The regex '^DES[0-9]+$' ensures only valid auto-generated codes are considered. CAST(SUBSTRING(...) AS INTEGER) strips the "DES" prefix and sorts numerically so that DES009 < DES010 correctly. The result is used to compute the next code by incrementing the number and zero-padding to 3 digits.`,
+            explanation: `Reads the current state of the SERIAL sequence directly without consuming it. If is_called = true, the next code = last_value + 1. If is_called = false (sequence never used), next code = last_value. This is a safe peek — calling this endpoint 100 times will always return the same value and never skip a number.`,
         },
         {
             label: '2. Duplicate Name Check (Create)',
             endpoint: 'POST /api/masters/designation',
             sql: `SELECT "c_code" FROM "tbl_desig_mst"
-WHERE LOWER("c_name") = LOWER($1) AND "n_deleted" = 0`,
+WHERE LOWER("c_name") = LOWER($1)`,
             params: ['$1 → c_name (req.body) — the designation name to check for duplicates'],
-            explanation: `Before inserting, checks whether an active designation with the same name already exists. LOWER() on both sides makes the comparison case-insensitive. The n_deleted = 0 filter ensures soft-deleted records are not counted as duplicates, so a previously deleted name can be reused.`,
+            explanation: `Before inserting, checks whether a designation with the same name already exists. LOWER() on both sides makes the comparison case-insensitive. No n_deleted filter — since hard delete is in use, every row in the table is active.`,
         },
         {
             label: '3. Insert New Designation',
             endpoint: 'POST /api/masters/designation',
-            sql: `INSERT INTO "tbl_desig_mst"
-  ("c_code", "c_name", "c_sh_name", "n_deleted", "d_created", "c_modifier")
-VALUES ($1, $2, $3, 0, NOW(), $4)`,
+            sql: `-- Step 1: Insert with TEMP code, let n_seq auto-increment, get it back
+INSERT INTO "tbl_desig_mst"
+  ("c_code", "c_name", "c_sh_name", "d_created", "c_modifier")
+VALUES ('TEMP', $1, $2, NOW(), $3)
+RETURNING "n_seq"
+
+-- Step 2: Derive real code from n_seq and update the row
+UPDATE "tbl_desig_mst"
+SET "c_code" = $1
+WHERE "n_seq" = $2`,
             params: [
-                '$1 → c_code — auto-generated code (e.g. DES004)',
-                '$2 → c_name (req.body) — designation name',
-                '$3 → c_sh_name (req.body) — short name (nullable)',
-                '$4 → req.admin.c_user_id — logged-in admin user ID',
+                'INSERT → $1: c_name (req.body), $2: c_sh_name (req.body), $3: req.admin.c_user_id',
+                'UPDATE → $1: derived c_code (e.g. DES008 from n_seq=8), $2: n_seq returned from INSERT',
             ],
-            explanation: `Inserts a new designation record. n_deleted is hardcoded to 0 (active). d_created is set to the current server timestamp via NOW(). c_modifier stores the logged-in admin's user ID for audit purposes. All values are passed as parameterised placeholders ($1–$4) to prevent SQL injection.`,
+            explanation: `Uses a two-step approach to avoid double-incrementing the sequence. Step 1 inserts with a TEMP placeholder for c_code — PostgreSQL auto-assigns n_seq (SERIAL) exactly once. RETURNING n_seq captures that value. Step 2 derives the real code (e.g. n_seq=8 → DES008) and updates the row. This guarantees exactly one sequence increment per record created — no gaps.`,
         },
         {
             label: '4. Search / List (Paginated)',
@@ -223,7 +226,7 @@ VALUES ($1, $2, $3, 0, NOW(), $4)`,
             sql: `SELECT "c_code", "c_name", "c_sh_name", "d_created", "d_modified",
        COUNT(*) OVER() AS total_count
 FROM "tbl_desig_mst"
-WHERE "n_deleted" = 0
+WHERE 1=1
   AND LOWER("c_name") LIKE LOWER($1)   -- if search param provided
   AND LOWER("c_code") LIKE LOWER($2)   -- if code param provided
 ORDER BY "c_code"
@@ -234,28 +237,27 @@ LIMIT $3 OFFSET $4`,
                 '$3 → limit — number of records per page (default 10)',
                 '$4 → offset — (page - 1) * limit',
             ],
-            explanation: `Retrieves active designations with optional name/code filters. LIKE with % wildcards enables partial matching; the search term is wrapped in % automatically unless the caller uses * as a wildcard. COUNT(*) OVER() is a window function that returns the total matching row count in the same query pass — avoiding a separate COUNT query. LIMIT/OFFSET implement pagination.`,
+            explanation: `Retrieves all designations with optional name/code filters. LIKE with % wildcards enables partial matching; the search term is wrapped in % automatically unless the caller uses * as a wildcard. COUNT(*) OVER() is a window function that returns the total matching row count in the same query pass — avoiding a separate COUNT query. LIMIT/OFFSET implement pagination.`,
         },
         {
             label: '5. Exists Check (Update / Delete)',
             endpoint: 'PUT or DELETE /api/masters/designation/:code',
             sql: `SELECT "c_code" FROM "tbl_desig_mst"
-WHERE "c_code" = $1 AND "n_deleted" = 0`,
+WHERE "c_code" = $1`,
             params: ['$1 → req.params.code.toUpperCase() — designation code from the URL path parameter'],
-            explanation: `Verifies the designation exists and is not soft-deleted before allowing an update or delete. Returns 404 if no row is found, preventing ghost updates on already-deleted or non-existent records.`,
+            explanation: `Verifies the designation exists before allowing an update or delete. No n_deleted filter is needed — for update, the record must simply exist; for delete, the row will be physically removed. Returns 404 if not found.`,
         },
         {
             label: '6. Duplicate Name Check (Update)',
             endpoint: 'PUT /api/masters/designation/:code',
             sql: `SELECT "c_code" FROM "tbl_desig_mst"
 WHERE LOWER("c_name") = LOWER($1)
-  AND "n_deleted" = 0
   AND "c_code" != $2`,
             params: [
                 '$1 → c_name (req.body) — the new name being set',
                 '$2 → req.params.code.toUpperCase() — current record\'s code (excluded from clash check)',
             ],
-            explanation: `Same as the create duplicate check but excludes the record being updated (c_code != $2). This allows a record to keep its own name while still blocking a rename that would clash with another active designation.`,
+            explanation: `Checks for a name clash with any other designation, excluding the record being updated. No n_deleted filter — hard delete means every row in the table is active.`,
         },
         {
             label: '7. Update Designation',
@@ -291,22 +293,20 @@ WHERE "c_code" = $1`,
 
     dept: [
         {
-            label: '1. Generate Next Code',
+            label: '1. Preview Next Code (no increment)',
             endpoint: 'GET /api/masters/department/next-code',
-            sql: `SELECT "C_Code" FROM "tbl_department_mst"
-WHERE "C_Code" ~ '^DP[0-9]+$'
-ORDER BY CAST(SUBSTRING("C_Code" FROM 3) AS INTEGER) DESC
-LIMIT 1`,
+            sql: `SELECT last_value, is_called
+FROM tbl_department_mst_n_seq_seq`,
             params: [],
-            explanation: `Fetches the department row with the highest numeric suffix (e.g. DP0012). The regex '^DP[0-9]+$' filters only valid auto-generated codes. SUBSTRING FROM 3 strips the two-character "DP" prefix, and CAST AS INTEGER ensures numeric ordering (DP0009 < DP0010). The next code is produced by incrementing and zero-padding to 4 digits.`,
+            explanation: `Reads the current state of the SERIAL sequence directly without consuming it. If is_called = true, the next code = last_value + 1. If is_called = false (sequence never used), next code = last_value. Safe to call any number of times — never skips a number.`,
         },
         {
             label: '2. Duplicate Name Check (Create)',
             endpoint: 'POST /api/masters/department',
             sql: `SELECT "C_Code" FROM "tbl_department_mst"
-WHERE LOWER("c_name") = LOWER($1) AND "N_deleted" = 0`,
+WHERE LOWER("c_name") = LOWER($1)`,
             params: ['$1 → c_name (req.body) — the department name to check for duplicates'],
-            explanation: `Case-insensitive check for an existing active department with the same name. Prevents duplicate entries while allowing a previously soft-deleted name to be reused (N_deleted = 0 filter).`,
+            explanation: `Case-insensitive check for an existing department with the same name. No N_deleted filter — hard delete means every row in the table is active.`,
         },
         {
             label: '3. Validate Incharge Code',
@@ -320,24 +320,24 @@ LIMIT 1`,
         {
             label: '4. Insert New Department',
             endpoint: 'POST /api/masters/department',
-            sql: `INSERT INTO "tbl_department_mst"
+            sql: `-- Step 1: Insert with TEMP code, let n_seq auto-increment, get it back
+INSERT INTO "tbl_department_mst"
   ("C_Code", "c_name", "c_short_name",
    "C_travel_desk_location", "C_travel_desk_incharge",
    "C_material_desk_location", "C_material_desk_incharge",
-   "N_SFA_ROLE", "N_deleted", "D_created", "C_modifier")
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,NOW(),$9)`,
+   "N_SFA_ROLE", "D_created", "C_modifier")
+VALUES ('TEMP',$1,$2,$3,$4,$5,$6,$7,NOW(),$8)
+RETURNING "n_seq"
+
+-- Step 2: Derive real code from n_seq and update the row
+UPDATE "tbl_department_mst"
+SET "C_Code" = $1
+WHERE "n_seq" = $2`,
             params: [
-                '$1 → c_code — auto-generated code (e.g. DP0003)',
-                '$2 → c_name (req.body) — department name',
-                '$3 → c_short_name (req.body) — short name (nullable)',
-                '$4 → c_travel_desk_location (req.body).toUpperCase() — e.g. HYDERABAD (nullable)',
-                '$5 → c_travel_desk_incharge (req.body) — incharge employee code (nullable)',
-                '$6 → c_material_desk_location (req.body).toUpperCase() — e.g. MUMBAI (nullable)',
-                '$7 → c_material_desk_incharge (req.body) — incharge employee code (nullable)',
-                '$8 → n_sfa_role (req.body) — 0 or 1',
-                '$9 → req.admin.c_user_id — logged-in admin user ID',
+                'INSERT → $1: c_name, $2: c_short_name, $3: c_travel_desk_location (uppercase), $4: c_travel_desk_incharge, $5: c_material_desk_location (uppercase), $6: c_material_desk_incharge, $7: n_sfa_role, $8: req.admin.c_user_id',
+                'UPDATE → $1: derived C_Code (e.g. DP0008 from n_seq=8), $2: n_seq returned from INSERT',
             ],
-            explanation: `Inserts a new department with all provided fields. N_deleted is hardcoded to 0 and D_created to NOW(). Location values are stored in uppercase (enforced in the controller). C_modifier captures the admin user ID. All 9 user-supplied values are parameterised to prevent SQL injection.`,
+            explanation: `Uses a two-step approach to avoid double-incrementing the sequence. Step 1 inserts with a TEMP placeholder — PostgreSQL auto-assigns n_seq (SERIAL) exactly once. RETURNING n_seq captures that value. Step 2 derives the real code (e.g. n_seq=8 → DP0008) and updates the row. Exactly one sequence increment per record — no gaps.`,
         },
         {
             label: '5. Search / List (Paginated)',
@@ -348,7 +348,7 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,NOW(),$9)`,
        "N_SFA_ROLE","D_created","D_modified",
        COUNT(*) OVER() AS total_count
 FROM "tbl_department_mst"
-WHERE "N_deleted" = 0
+WHERE 1=1
   AND LOWER("c_name") LIKE LOWER($1)   -- if search param provided
   AND LOWER("C_Code") LIKE LOWER($2)   -- if code param provided
 ORDER BY "C_Code"
@@ -359,28 +359,27 @@ LIMIT $3 OFFSET $4`,
                 '$3 → limit — records per page (default 10)',
                 '$4 → offset — (page - 1) * limit',
             ],
-            explanation: `Returns active departments with optional name/code partial-match filters. The window function COUNT(*) OVER() provides the total result count without a second query. Results are ordered by C_Code and paginated via LIMIT/OFFSET. At least one of search or code must be provided — if neither is given, the API returns an empty result immediately without hitting the DB.`,
+            explanation: `Returns all departments with optional name/code partial-match filters. The window function COUNT(*) OVER() provides the total result count without a second query. Results are ordered by C_Code and paginated via LIMIT/OFFSET. At least one of search or code must be provided — if neither is given, the API returns an empty result immediately without hitting the DB.`,
         },
         {
             label: '6. Exists Check (Update / Delete)',
             endpoint: 'PUT or DELETE /api/masters/department/:code',
             sql: `SELECT "C_Code" FROM "tbl_department_mst"
-WHERE "C_Code" = $1 AND "N_deleted" = 0`,
+WHERE "C_Code" = $1`,
             params: ['$1 → req.params.code.toUpperCase() — department code from the URL path parameter'],
-            explanation: `Confirms the department exists and is active before proceeding with an update or delete. Returns 404 if not found, guarding against operations on non-existent or already-deleted records.`,
+            explanation: `Verifies the department exists before allowing an update or delete. No N_deleted filter is needed — for update, the record must simply exist; for delete, the row will be physically removed. Returns 404 if not found.`,
         },
         {
             label: '7. Duplicate Name Check (Update)',
             endpoint: 'PUT /api/masters/department/:code',
             sql: `SELECT "C_Code" FROM "tbl_department_mst"
 WHERE LOWER("c_name") = LOWER($1)
-  AND "N_deleted" = 0
   AND "C_Code" != $2`,
             params: [
                 '$1 → c_name (req.body) — the new name being set',
                 '$2 → req.params.code.toUpperCase() — current record\'s code (excluded from clash check)',
             ],
-            explanation: `Checks for a name clash with any other active department, excluding the record being updated. Allows a department to retain its current name while blocking a rename that would duplicate another department's name.`,
+            explanation: `Checks for a name clash with any other department, excluding the record being updated. No N_deleted filter — hard delete means every row in the table is active.`,
         },
         {
             label: '8. Update Department',

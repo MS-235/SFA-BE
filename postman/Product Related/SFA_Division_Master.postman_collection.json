@@ -26,6 +26,30 @@
   ],
   "item": [
     {
+      "name": "0. Get Next Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/masters/division/next-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "masters", "division", "next-code"]
+        },
+        "description": "Returns the next auto-generated division code (e.g. DI0003).\n\nUses the SERIAL sequence on the table — always increments forward, never reuses a code even after hard delete."
+      },
+      "response": [
+        {
+          "name": "Success - 200",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"nextCode\": \"DI0003\"\n}"
+        }
+      ]
+    },
+    {
       "name": "1. Create Division",
       "event": [
         {
@@ -244,7 +268,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "masters", "division", "{{divCode}}"]
         },
-        "description": "Soft deletes a division (sets n_deleted = 1).\n\nThe record is NOT physically removed from the database."
+        "description": "Permanently deletes a division from the database.\n\nThe record is physically removed and cannot be recovered."
       },
       "response": [
         {
